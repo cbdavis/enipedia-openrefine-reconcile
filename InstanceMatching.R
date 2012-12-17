@@ -112,7 +112,6 @@ getPrefixes <- function(){
 #convert text to the most boring form possible
 #this makes it easier to perform string comparisons
 removeTheWeirdness <- function(text){
-  text = URLdecode(text)
   text = iconv(text, to="ASCII//TRANSLIT") #work with simple ascii - this doesn't do anything to help with misspellings
   text = gsub('http://enipedia.tudelft.nl/wiki/', '', text)
   text = gsub('\\)', '', text)
@@ -126,10 +125,11 @@ removeTheWeirdness <- function(text){
   text = gsub('  ', ' ', text)
   text = gsub("'", "", text)
   text = trim(tolower(text))
+  text = sapply(text, URLdecode)
   return(text)
 }
 
-matchPowerPlants <- function(queryRequest, numResults){
+matchPowerPlants <- function(queryRequest, numResults=5){
   country = ""
   owner = ""
   point = NULL
@@ -158,7 +158,6 @@ matchPowerPlants <- function(queryRequest, numResults){
       latitude = tmp$lat
       longitude = tmp$lon
     }
-    
   }
   
   #TODO need some check to correct the country - find closest match if slightly misspelled
@@ -173,7 +172,7 @@ matchPowerPlants <- function(queryRequest, numResults){
   
   #TODO implement matching on a soup consisting of the owner, place, etc.
   enipediaCleanedName = removeTheWeirdness(gsub(' Powerplant', '', enipediaData$name))
-  enipediaCleanedOwnerName = removeTheWeirdness(gsub(' Powerplant', '', enipediaData$owner))
+  enipediaCleanedOwnerName = removeTheWeirdness(enipediaData$owner)
   
   #write('name to match on is- ', stderr())
   #write(removeTheWeirdness(queryRequest$query), stderr())
@@ -186,14 +185,20 @@ matchPowerPlants <- function(queryRequest, numResults){
                       enipediaCleanedName, 
                       r=0.5)
 
-  ldiffOwner = levenshteinSim(removeTheWeirdness(owner), 
-                         enipediaCleanedOwnerName)
-  
-  jdiffOwner = jarowinkler(removeTheWeirdness(owner), 
-                      enipediaCleanedOwnerName, 
-                      r=0.5)
-  
   jaccard_index_values = unlist(lapply(enipediaCleanedName, function(x) {jaccard_index(x,removeTheWeirdness(queryRequest$query))}))
+  
+  if(owner != ""){
+    ldiffOwner = levenshteinSim(owner, 
+                           enipediaCleanedOwnerName)
+    
+    jdiffOwner = jarowinkler(owner, 
+                        enipediaCleanedOwnerName, 
+                        r=0.5)
+    
+    jaccard_index_values_owner = unlist(lapply(enipediaCleanedOwnerName, function(x) {jaccard_index(x,owner)}))
+  }
+  
+
   
   #TODO allow json query strings to specify this
   distanceCutoff = 20000
