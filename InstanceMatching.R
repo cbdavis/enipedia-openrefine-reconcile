@@ -8,6 +8,7 @@ library(rjson) #json is used for input/output data
 library(reshape) #colsplit
 library(gdata) #trim
 library(RecordLinkage) #string matching
+library(geosphere) #distance calculations
 
 #http://en.wikipedia.org/wiki/Jaccard_index
 #Look at length of intersection and union of tokens in two strings to determine similarity
@@ -315,6 +316,8 @@ getMatches <- function(jsonString){
     allResultsForAllQueries = list() 
     queryCount = 1
     for (queryRequest in request){
+      
+      print(queryRequest)
       allResultsForQuery = processMatchingQueryRequest(queryRequest)    
       
       #this tells us which query we're looking at
