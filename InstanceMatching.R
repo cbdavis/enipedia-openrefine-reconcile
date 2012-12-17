@@ -185,7 +185,7 @@ matchPowerPlants <- function(queryRequest, numResults=5){
                       enipediaCleanedName, 
                       r=0.5)
 
-  jaccard_index_values = unlist(lapply(enipediaCleanedName, function(x) {jaccard_index(x,removeTheWeirdness(queryRequest$query))}))
+  #jaccard_index_values = unlist(lapply(enipediaCleanedName, function(x) {jaccard_index(x,removeTheWeirdness(queryRequest$query))}))
   
   if(owner != ""){
     ldiffOwner = levenshteinSim(owner, 
@@ -195,7 +195,8 @@ matchPowerPlants <- function(queryRequest, numResults=5){
                         enipediaCleanedOwnerName, 
                         r=0.5)
     
-    jaccard_index_values_owner = unlist(lapply(enipediaCleanedOwnerName, function(x) {jaccard_index(x,owner)}))
+    #Takes too long
+    #jaccard_index_values_owner = unlist(lapply(enipediaCleanedOwnerName, function(x) {jaccard_index(x,owner)}))
   }
   
 
@@ -222,7 +223,7 @@ matchPowerPlants <- function(queryRequest, numResults=5){
   #may want to also do some sort of soup matching by default with the city, owner, etc.
   #find the distance from the origin
   
-  summedSquareOfDistances = ldiff^2 + jdiff^2 + jaccard_index_values^2
+  summedSquareOfDistances = ldiff^2 + jdiff^2 # + jaccard_index_values^2
   
   #add in additional values if we have done the calculations
   if (!is.null(distanceScores)){
