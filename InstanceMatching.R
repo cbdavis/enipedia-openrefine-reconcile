@@ -27,7 +27,7 @@ tokenize <- function(text){
 
 retrieveCompanyDataFromEnipedia <- function(){
   enipediaData = NULL
-  endpoint = "http://enipedia.tudelft.nl/sparql/sparql"
+  endpoint = "http://enipedia.tudelft.nl/sparql"
   queryString = paste(getPrefixes(), 
                       "select distinct ?company where {
                         ?x prop:Ownercompany ?company . 
@@ -41,7 +41,7 @@ retrieveCompanyDataFromEnipedia <- function(){
 retrieveCountryDataFromEnipedia <- function (country) {
   enipediaData = NULL
   if (country != ""){
-    endpoint = "http://enipedia.tudelft.nl/sparql/sparql"
+    endpoint = "http://enipedia.tudelft.nl/sparql"
     queryString = paste(getPrefixes(), 
                         "select * where {
                       ?x rdf:type cat:Powerplant .
@@ -109,9 +109,10 @@ getPrefixes <- function(){
 }
 
 
-#get rid of characters that get in the way
+#convert text to the most boring form possible
 #this makes it easier to perform string comparisons
 removeTheWeirdness <- function(text){
+  text = URLdecode(text)
   text = iconv(text, to="ASCII//TRANSLIT") #work with simple ascii - this doesn't do anything to help with misspellings
   text = gsub('http://enipedia.tudelft.nl/wiki/', '', text)
   text = gsub('\\)', '', text)
@@ -143,6 +144,7 @@ matchPowerPlants <- function(queryRequest, numResults){
     }
     if (tolower(property$p) == "owner" || tolower(property$p) == "ownercompany"){
       owner = property$v
+      owner = removeTheWeirdness(owner)
     }
     if (tolower(property$p) == "latitude" || tolower(property$p) == "lat"){
       latitude = property$v
@@ -171,7 +173,7 @@ matchPowerPlants <- function(queryRequest, numResults){
   
   #TODO implement matching on a soup consisting of the owner, place, etc.
   enipediaCleanedName = removeTheWeirdness(gsub(' Powerplant', '', enipediaData$name))
-  
+  enipediaCleanedOwnerName = removeTheWeirdness(gsub(' Powerplant', '', enipediaData$owner))
   
   #write('name to match on is- ', stderr())
   #write(removeTheWeirdness(queryRequest$query), stderr())
@@ -182,6 +184,13 @@ matchPowerPlants <- function(queryRequest, numResults){
   
   jdiff = jarowinkler(removeTheWeirdness(queryRequest$query), 
                       enipediaCleanedName, 
+                      r=0.5)
+
+  ldiffOwner = levenshteinSim(removeTheWeirdness(owner), 
+                         enipediaCleanedOwnerName)
+  
+  jdiffOwner = jarowinkler(removeTheWeirdness(owner), 
+                      enipediaCleanedOwnerName, 
                       r=0.5)
   
   jaccard_index_values = unlist(lapply(enipediaCleanedName, function(x) {jaccard_index(x,removeTheWeirdness(queryRequest$query))}))
@@ -207,12 +216,20 @@ matchPowerPlants <- function(queryRequest, numResults){
   #figure out some robust way to do this
   #may want to also do some sort of soup matching by default with the city, owner, etc.
   #find the distance from the origin
+  
+  summedSquareOfDistances = ldiff^2 + jdiff^2 + jaccard_index_values^2
+  
+  #add in additional values if we have done the calculations
   if (!is.null(distanceScores)){
-    dist = sqrt(ldiff^2 + jdiff^2 + jaccard_index_values^2 + distanceScores^2)
-  } else {
-    dist = sqrt(ldiff^2 + jdiff^2 + jaccard_index_values^2)
+    summedSquareOfDistances = summedSquareOfDistances + distanceScores^2
+  } 
+  
+  if (owner != ""){
+    summedSquareOfDistances = summedSquareOfDistances + ldiffOwner^2 + jdiffOwner^2
   }
   
+  dist = sqrt(summedSquareOfDistances)
+
   locs = sort(dist, decreasing=TRUE, index.return=TRUE)$ix[c(1:numResults)]
   
   allResultsForQuery = list()
@@ -237,6 +254,8 @@ matchPowerPlants <- function(queryRequest, numResults){
 
 matchEnergyCompany <- function (queryRequest, numResults=5) {
   company = queryRequest$query
+  
+  #Don't query this if we already have it
   enipediaData = retrieveCompanyDataFromEnipedia()
   enipediaCleanedName = removeTheWeirdness(enipediaData$name)
   ldiff = levenshteinSim(removeTheWeirdness(queryRequest$query), 
