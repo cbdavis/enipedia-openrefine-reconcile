@@ -25,6 +25,19 @@ tokenize <- function(text){
   return(tokenList)
 }
 
+retrieveCompanyDataFromEnipedia <- function(){
+  enipediaData = NULL
+  endpoint = "http://enipedia.tudelft.nl/sparql/sparql"
+  queryString = paste(getPrefixes(), 
+                      "select distinct ?company where {
+                        ?x prop:Ownercompany ?company . 
+                        }", sep="")
+  d <- SPARQL(url=endpoint, query=queryString, format='csv', extra=list(format='text/csv'))
+  enipediaData = d$results
+  colnames(enipediaData) = "name"
+  return(enipediaData)  
+}
+
 retrieveCountryDataFromEnipedia <- function (country) {
   enipediaData = NULL
   if (country != ""){
@@ -115,9 +128,7 @@ removeTheWeirdness <- function(text){
   return(text)
 }
 
-#processes single query requests
-processMatchingQueryRequest <- function (queryRequest, numResults=5) {  
-  
+matchPowerPlants <- function(queryRequest, numResults){
   country = ""
   owner = ""
   point = NULL
@@ -184,7 +195,7 @@ processMatchingQueryRequest <- function (queryRequest, numResults=5) {
                                  latitude), 
                            cbind(enipediaData$lon,
                                  enipediaData$lat)
-                           )
+    )
     #scale distance scores from 0 to 1, with 0 representing the distance cutoff
     #and 1 meaning that the point is directly on top of it
     distanceScores = distances
@@ -221,6 +232,51 @@ processMatchingQueryRequest <- function (queryRequest, numResults=5) {
   }
   
   return(allResultsForQuery)  
+}
+
+
+matchEnergyCompany <- function (queryRequest, numResults=5) {
+  company = queryRequest$query
+  enipediaData = retrieveCompanyDataFromEnipedia()
+  enipediaCleanedName = removeTheWeirdness(enipediaData$name)
+  ldiff = levenshteinSim(removeTheWeirdness(queryRequest$query), 
+                         enipediaCleanedName)
+  
+  jdiff = jarowinkler(removeTheWeirdness(queryRequest$query), 
+                      enipediaCleanedName, 
+                      r=0.5)
+  
+  jaccard_index_values = unlist(lapply(enipediaCleanedName, function(x) {jaccard_index(x,removeTheWeirdness(queryRequest$query))}))
+  
+  dist = sqrt(ldiff^2 + jdiff^2 + jaccard_index_values^2)
+
+  locs = sort(dist, decreasing=TRUE, index.return=TRUE)$ix[c(1:numResults)]
+  
+  allResultsForQuery = list()
+  for (loc in locs){
+    resultSet = list(id=enipediaData$x[loc],
+                     name=enipediaData$name[loc],
+                     type=list(c(id="http://enipedia.tudelft.nl/wiki/Category:Energy_Company",
+                                 name="Energy_Company")),
+                     score=dist[loc],
+                     latitude = enipediaData$lat[loc],
+                     longitude = enipediaData$lon[loc],
+                     match=FALSE) # hard-coded letting the humans always check things off
+    
+    allResultsForQuery$result = c(allResultsForQuery$result,list(resultSet))
+  }  
+  return(allResultsForQuery)  
+}
+
+#processes single query requests
+processMatchingQueryRequest <- function (queryRequest, numResults=5) {  
+  
+  #see what thing we're matching on
+  if (queryRequest$type == "Category:Energy_Company"){
+    return(matchEnergyCompany(queryRequest, numResults))
+  } else { #assume we're trying to match power plants
+    return(matchPowerPlants(queryRequest, numResults))
+  }  
 }
 
 #This is the main function
