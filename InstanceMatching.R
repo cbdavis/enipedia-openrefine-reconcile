@@ -133,6 +133,7 @@ removeTheWeirdness <- function(text){
 matchPowerPlants <- function(queryRequest, numResults=5){
   country = ""
   owner = ""
+  state = ""
   point = NULL
   latitude = NULL
   longitude = NULL
