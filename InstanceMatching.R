@@ -149,16 +149,16 @@ matchPowerPlants <- function(queryRequest, numResults=5){
       owner = removeTheWeirdness(owner)
     }
     if (tolower(property$p) == "latitude" || tolower(property$p) == "lat"){
-      latitude = property$v
+      latitude = as.numeric(property$v)
     }
     if (tolower(property$p) == "longitude" || tolower(property$p) == "long" || tolower(property$p) == "lon"){
-      longitude = property$v
+      longitude = as.numeric(property$v)
     }
     if (tolower(property$p) == "point" || tolower(property$p) == "coords" || tolower(property$p) == "coordinates"){
       coords = property$v
       tmp = extractCoordinates(coords)
-      latitude = tmp$lat
-      longitude = tmp$lon
+      latitude = as.numeric(tmp$lat)
+      longitude = as.numeric(tmp$lon)
     }
   }
   
