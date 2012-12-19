@@ -32,12 +32,12 @@ retrieveCompanyDataFromEnipedia <- function(){
   queryString = paste(getPrefixes(), 
                       "select distinct ?company where {
                         ?x prop:Ownercompany ?company . 
-                        }", sep="")
+}", sep="")
   d <- SPARQL(url=endpoint, query=queryString, format='csv', extra=list(format='text/csv'))
   enipediaData = d$results
   colnames(enipediaData) = "name"
   return(enipediaData)  
-}
+  }
 
 retrieveCountryDataFromEnipedia <- function (country) {
   enipediaData = NULL
@@ -46,13 +46,13 @@ retrieveCountryDataFromEnipedia <- function (country) {
     queryString = paste(getPrefixes(), 
                         "select * where {
                       ?x rdf:type cat:Powerplant .
-			OPTIONAL{?x prop:City ?city} .
+                        OPTIONAL{?x prop:City ?city} .
                         ?x rdfs:label ?name . 
                         ?x prop:Country a:", gsub(" ", "_", country) ," . 
-			OPTIONAL{?x prop:State ?state} .
+                        OPTIONAL{?x prop:State ?state} .
                         OPTIONAL{?x prop:Ownercompany ?owner}. 
                         ?x prop:Point ?point . 
-                        }", sep="")
+  }", sep="")
     d <- SPARQL(url=endpoint, query=queryString, format='csv', extra=list(format='text/csv'))
     enipediaData = d$results
     if (dim(enipediaData)[1] > 0){
@@ -62,11 +62,11 @@ retrieveCountryDataFromEnipedia <- function (country) {
     } else {
       print("no results for country")
     }
-  } else {
-    print("no country specified")
-  }
-  return(enipediaData)
+} else {
+  print("no country specified")
 }
+  return(enipediaData)
+  }
 
 extractCoordinates <- function(point){
   coords = colsplit(point, split=",", names=c("lat", "lon"))
@@ -174,6 +174,7 @@ matchPowerPlants <- function(queryRequest, numResults=5){
   #TODO implement matching on a soup consisting of the owner, place, etc.
   enipediaCleanedName = removeTheWeirdness(gsub(' Powerplant', '', enipediaData$name))
   enipediaCleanedOwnerName = removeTheWeirdness(enipediaData$owner)
+  enipediaCleanedStateName = removeTheWeirdness(enipediaData$state)
   
   #write('name to match on is- ', stderr())
   #write(removeTheWeirdness(queryRequest$query), stderr())
@@ -185,22 +186,31 @@ matchPowerPlants <- function(queryRequest, numResults=5){
   jdiff = jarowinkler(removeTheWeirdness(queryRequest$query), 
                       enipediaCleanedName, 
                       r=0.5)
-
+  
   #jaccard_index_values = unlist(lapply(enipediaCleanedName, function(x) {jaccard_index(x,removeTheWeirdness(queryRequest$query))}))
+
+  if(state != ""){
+    ldiffState = levenshteinSim(state, 
+                                enipediaCleanedStateName)
+    
+    jdiffState = jarowinkler(state, 
+                             enipediaCleanedStateName, 
+                             r=0.5)
+  }
   
   if(owner != ""){
     ldiffOwner = levenshteinSim(owner, 
-                           enipediaCleanedOwnerName)
+                                enipediaCleanedOwnerName)
     
     jdiffOwner = jarowinkler(owner, 
-                        enipediaCleanedOwnerName, 
-                        r=0.5)
+                             enipediaCleanedOwnerName, 
+                             r=0.5)
     
     #Takes too long
     #jaccard_index_values_owner = unlist(lapply(enipediaCleanedOwnerName, function(x) {jaccard_index(x,owner)}))
   }
   
-
+  
   
   #TODO allow json query strings to specify this
   distanceCutoff = 20000
@@ -234,9 +244,13 @@ matchPowerPlants <- function(queryRequest, numResults=5){
   if (owner != ""){
     summedSquareOfDistances = summedSquareOfDistances + ldiffOwner^2 + jdiffOwner^2
   }
+
+  if (state != ""){
+    summedSquareOfDistances = summedSquareOfDistances + ldiffState^2 + jdiffState^2
+  }
   
   dist = sqrt(summedSquareOfDistances)
-
+  
   locs = sort(dist, decreasing=TRUE, index.return=TRUE)$ix[c(1:numResults)]
   
   allResultsForQuery = list()
@@ -275,7 +289,7 @@ matchEnergyCompany <- function (queryRequest, numResults=5) {
   jaccard_index_values = unlist(lapply(enipediaCleanedName, function(x) {jaccard_index(x,removeTheWeirdness(queryRequest$query))}))
   
   dist = sqrt(ldiff^2 + jdiff^2 + jaccard_index_values^2)
-
+  
   locs = sort(dist, decreasing=TRUE, index.return=TRUE)$ix[c(1:numResults)]
   
   allResultsForQuery = list()

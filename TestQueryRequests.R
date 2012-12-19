@@ -33,4 +33,8 @@ queryRequest = '{"q0":{"query":"Ahrensfelde","type":"Category:Powerplant","type_
 
 queryRequest = '{"query":"Ahrensfelde","type":"Category:Powerplant","type_strict":"should","properties":[{"pid":"country","v":"Germany"},{"pid":"owner","v":"Vattenfall Europe Generation AG"},{"pid":"point","v":"52.58195, 13.56734"}]}'
 
+queryRequest = '{"q0":{"query":"Rugeley ","type":"Category:Powerplant","type_strict":"should","properties":[{"pid":"owner","v":"International Power / Mitsui"}]},"q1":{"query":"Slieve Divena","type":"Category:Powerplant","type_strict":"should","properties":[{"pid":"owner","v":"Infinis"}]},"q2":{"query":"Castleford","type":"Category:Powerplant","type_strict":"should","properties":[{"pid":"owner","v":"E.On UK"}]},"q3":{"query":"Arnish","type":"Category:Powerplant","type_strict":"should","properties":[{"pid":"owner","v":"Scottish & Southern Energy plc"}]},"q4":{"query":"Lubreoch","type":"Category:Powerplant","type_strict":"should","properties":[{"pid":"owner","v":"Scottish & Southern Energy plc"}]},"q5":{"query":"Hare Hill","type":"Category:Powerplant","type_strict":"should","properties":[{"pid":"owner","v":"Scottish Power"}]},"q6":{"query":"Bowbeat","type":"Category:Powerplant","type_strict":"should","properties":[{"pid":"owner","v":"E.On UK"}]},"q7":{"query":"Walkaway","type":"Category:Powerplant","type_strict":"should","properties":[{"pid":"owner","v":"EDF Energy Renewables"}]}}'
+
+queryRequest = '{"query":"Rugeley ","type":"Category:Powerplant","type_strict":"should","properties":[{"pid":"owner","v":"International Power / Mitsui"}]},"q1":{"query":"Slieve Divena","type":"Category:Powerplant","type_strict":"should","properties":[{"pid":"owner","v":"Infinis"}]}'
+
 queryRequest = fromJSON(queryRequest)
