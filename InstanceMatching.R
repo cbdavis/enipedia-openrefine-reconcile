@@ -1,5 +1,3 @@
-#This file contains several functions that are useful utilities in the process of instance matching
-
 #never ever ever convert strings to factors
 options(stringsAsFactors = FALSE)
 
@@ -10,216 +8,140 @@ library(gdata) #trim
 library(RecordLinkage) #string matching
 library(geosphere) #distance calculations
 
-#http://en.wikipedia.org/wiki/Jaccard_index
-#Look at length of intersection and union of tokens in two strings to determine similarity
-jaccard_index <- function(text1, text2){
-  set1 = tokenize(text1)
-  set2 = tokenize(text2)
-  jaccard_index = length(intersect(set1, set2)) / length(union(set1, set2))
-  return(jaccard_index)
-}
+#TODO set this to the directory where the source files are located
+setwd("/home/cbdavis/enipedia-openrefine-reconcile")
+source("DataRetrieval.R") # gets data from enipedia
+source("DataProcessing.R") # cleans up data into more usable forms
+source("StringMatching.R") # Jaccard index function, etc.
 
-#return a set of tokens contained within a string
-tokenize <- function(text){
-  text = removeTheWeirdness(text)
-  tokenList = unique(unlist(strsplit(text, split=" ")))
-  return(tokenList)
-}
-
-retrieveCompanyDataFromEnipedia <- function(){
-  enipediaData = NULL
-  endpoint = "http://enipedia.tudelft.nl/sparql"
-  queryString = paste(getPrefixes(), 
-                      "select distinct ?company where {
-                        ?x prop:Ownercompany ?company . 
-}", sep="")
-  d <- SPARQL(url=endpoint, query=queryString, format='csv', extra=list(format='text/csv'))
-  enipediaData = d$results
-  colnames(enipediaData) = "name"
-  return(enipediaData)  
-  }
-
-retrieveCountryDataFromEnipedia <- function (country) {
-  enipediaData = NULL
-  if (country != ""){
-    endpoint = "http://enipedia.tudelft.nl/sparql"
-    queryString = paste(getPrefixes(), 
-                        "select * where {
-                      ?x rdf:type cat:Powerplant .
-                        OPTIONAL{?x prop:City ?city} .
-                        ?x rdfs:label ?name . 
-                        ?x prop:Country a:", gsub(" ", "_", country) ," . 
-                        OPTIONAL{?x prop:State ?state} .
-                        OPTIONAL{?x prop:Ownercompany ?owner}. 
-                        ?x prop:Point ?point . 
-  }", sep="")
-    d <- SPARQL(url=endpoint, query=queryString, format='csv', extra=list(format='text/csv'))
-    enipediaData = d$results
-    if (dim(enipediaData)[1] > 0){
-      coords = extractCoordinates(enipediaData$point)
-      enipediaData$lat = coords$lat
-      enipediaData$lon = coords$lon
-    } else {
-      print("no results for country")
+#This is the main function that processes reconciliation requests from Open Refine
+getMatches <- function(jsonString){
+  
+  request = fromJSON(jsonString)
+  
+  if (names(request)[1] == "q0") { #multiple queries 
+    #query results are appended to this
+    allResultsForAllQueries = list() 
+    queryCount = 1
+    for (queryRequest in request){
+      
+      print(queryRequest)
+      allResultsForQuery = processMatchingQueryRequest(queryRequest)    
+      
+      #this tells us which query we're looking at
+      #it's usually something like q0, q1, etc
+      queryIdentifier = names(request)[queryCount]
+      
+      #add query results here
+      allResultsForAllQueries[queryIdentifier] = list(allResultsForQuery)
+      
+      queryCount = queryCount + 1
     }
-} else {
-  print("no country specified")
-}
-  return(enipediaData)
+    #send output to calling php code
+    #write(toJSON(allResultsForAllQueries), stdout())
+    return(toJSON(allResultsForAllQueries))
+  } else { #single query
+    allResultsForQuery = processMatchingQueryRequest(request)
+    #send output to calling php code
+    #write(toJSON(allResultsForQuery), stdout())
+    return(toJSON(allResultsForQuery))
   }
-
-extractCoordinates <- function(point){
-  coords = colsplit(point, split=",", names=c("lat", "lon"))
-  
-  #make sure that this is a character vector, not a factor vector
-  coords$lon = as.character(coords$lon)
-  coords$lat = as.character(coords$lat)
-  
-  #fix up lat and lon values
-  eastLonLocs = grep("E", coords$lon)
-  coords$lon[eastLonLocs] = gsub(' E', '', coords$lon[eastLonLocs])
-  coords$lon[eastLonLocs] = as.numeric(coords$lon[eastLonLocs])
-  
-  westLonLocs = grep("W", coords$lon)
-  coords$lon[westLonLocs] = gsub(' W', '', coords$lon[westLonLocs])
-  coords$lon[westLonLocs] = 0 - as.numeric(coords$lon[westLonLocs])
-  
-  northLatLocs = grep("N", coords$lat)
-  coords$lat[northLatLocs] = gsub(' N', '', coords$lat[northLatLocs])
-  coords$lat[northLatLocs] = as.numeric(coords$lat[northLatLocs])
-  
-  southLatLocs = grep("S", coords$lat)
-  coords$lat[southLatLocs] = gsub(' S', '', coords$lat[southLatLocs])
-  coords$lat[southLatLocs] = 0 - as.numeric(coords$lat[southLatLocs])
-  
-  coords$lon = as.numeric(coords$lon)
-  coords$lat = as.numeric(coords$lat)
-  
-  return(coords)
 }
 
-#These are common prefixes used with the Enipedia SPARQL endpoint
-getPrefixes <- function(){
-  return("PREFIX a: <http://enipedia.tudelft.nl/wiki/>
-          PREFIX prop: <http://enipedia.tudelft.nl/wiki/Property:>
-         PREFIX cat: <http://enipedia.tudelft.nl/wiki/Category:>
-         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-         PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-         PREFIX fn: <http://www.w3.org/2005/xpath-functions#>
-         PREFIX afn: <http://jena.hpl.hp.com/ARQ/function#>")
+#processes single query requests
+processMatchingQueryRequest <- function (queryRequest, numResults=5) {  
+  
+  #see what thing we're matching on
+  if (queryRequest$type == "Category:Energy_Company"){
+    return(matchEnergyCompany(queryRequest, numResults))
+  } else { #assume we're trying to match power plants
+    return(matchPowerPlants(queryRequest, numResults))
+  }  
 }
 
 
-#convert text to the most boring form possible
-#this makes it easier to perform string comparisons
-removeTheWeirdness <- function(text){
-  text = iconv(text, to="ASCII//TRANSLIT") #work with simple ascii - this doesn't do anything to help with misspellings
-  text = gsub('http://enipedia.tudelft.nl/wiki/', '', text)
-  text = gsub('\\)', '', text)
-  text = gsub('\\(', '', text)
-  text = gsub('/', '', text)
-  text = gsub(',', ' ', text)
-  text = gsub('\\.', ' ', text)
-  text = gsub('&', '', text)
-  text = gsub('_', ' ', text)
-  text = gsub('-', ' ', text)
-  text = gsub('  ', ' ', text)
-  text = gsub("'", "", text)
-  text = trim(tolower(text))
-  text = sapply(text, URLdecode)
-  return(text)
-}
+########## Instance Matching ##########
 
 matchPowerPlants <- function(queryRequest, numResults=5){
-  country = ""
-  owner = ""
-  state = ""
-  point = NULL
-  latitude = NULL
-  longitude = NULL
-  #extract the different properties that are used for matching, allow for various spellings to minimize user error
-  #TODO include capacity, yearly production, emissions, etc
-  for (property in queryRequest$properties){
-    #print(property)
-    if (tolower(property$p) == "country"){
-      country = property$v
-    }
-    if (tolower(property$p) == "owner" || tolower(property$p) == "ownercompany"){
-      owner = property$v
-      owner = removeTheWeirdness(owner)
-    }
-    if (tolower(property$p) == "latitude" || tolower(property$p) == "lat"){
-      latitude = as.numeric(property$v)
-    }
-    if (tolower(property$p) == "longitude" || tolower(property$p) == "long" || tolower(property$p) == "lon"){
-      longitude = as.numeric(property$v)
-    }
-    if (tolower(property$p) == "point" || tolower(property$p) == "coords" || tolower(property$p) == "coordinates"){
-      coords = property$v
-      tmp = extractCoordinates(coords)
-      latitude = as.numeric(tmp$lat)
-      longitude = as.numeric(tmp$lon)
-    }
-  }
+  externalData = convertQueryRequestToVector(queryRequest)
   
   #TODO need some check to correct the country - find closest match if slightly misspelled
   #or give feedback to the user about what they should do
   
-  enipediaData = retrieveCountryDataFromEnipedia(country)
+  enipediaData = retrieveCountryDataFromEnipedia(externalData$country)
   
-  #get geographic information
-  coords = extractCoordinates(enipediaData$point)
-  enipediaData$lat = coords$lat
-  enipediaData$lon = coords$lon
+  # better matching algorithms can be plugged in here instead
+  indicesOfCandidateMatches = matchPowerPlantEntity(externalData, enipediaData, numResults)
+
+  #only consider the number of top candidates specified by numResults
+  #this assumes that indicesOfCandidateMatches is sorted with the best candidates first
+  if (length(indicesOfCandidateMatches) > numResults) {
+    indicesOfCandidateMatches = indicesOfCandidateMatches[c(1:numResults)]
+  }
   
-  #TODO implement matching on a soup consisting of the owner, place, etc.
-  enipediaCleanedName = removeTheWeirdness(gsub(' Powerplant', '', enipediaData$name))
-  enipediaCleanedOwnerName = removeTheWeirdness(enipediaData$owner)
-  enipediaCleanedStateName = removeTheWeirdness(enipediaData$state)
-  
-  #write('name to match on is- ', stderr())
-  #write(removeTheWeirdness(queryRequest$query), stderr())
+  allResultsForQuery = list()
+  for (loc in indicesOfCandidateMatches){
+    resultSet = list(id=enipediaData$x[loc],
+                     name=paste('name:',enipediaData$name[loc],'|',
+                                'owner:',removeTheWeirdness(enipediaData$owner[loc]), '|',
+                                'city:',removeTheWeirdness(enipediaData$city[loc]), sep=""),
+                     type=list(c(id="http://enipedia.tudelft.nl/wiki/Category:Powerplant",
+                                 name="Powerplant")),
+                     score=dist[loc],
+                     latitude = enipediaData$lat[loc],
+                     longitude = enipediaData$lon[loc],
+                     match=FALSE) # hard-coded letting the humans always check things off
+    
+    allResultsForQuery$result = c(allResultsForQuery$result,list(resultSet))
+  }
+  return(allResultsForQuery)  
+}
+
+# This is the main matching function, and functions for alternative matching strategies should follow this template 
+# so that it's easy to just drop in improved versions of the code.
+#
+# externalData is a vector for which externalData$plant and externalData$country must be specified.
+# Other values checked for are owner, state, latitude, longitude
+matchPowerPlantEntity <- function(externalData, enipediaData, numResults=5){
   
   #perform string matching
-  ldiff = levenshteinSim(removeTheWeirdness(queryRequest$query), 
-                         enipediaCleanedName)
+  ldiff = levenshteinSim(removeTheWeirdness(externalData$plant), 
+                         enipediaData$CleanedPlantName)
   
-  jdiff = jarowinkler(removeTheWeirdness(queryRequest$query), 
-                      enipediaCleanedName, 
+  jdiff = jarowinkler(removeTheWeirdness(externalData$plant), 
+                      enipediaData$CleanedPlantName, 
                       r=0.5)
   
-  #jaccard_index_values = unlist(lapply(enipediaCleanedName, function(x) {jaccard_index(x,removeTheWeirdness(queryRequest$query))}))
-
-  if(state != ""){
-    ldiffState = levenshteinSim(state, 
-                                enipediaCleanedStateName)
+  jaccard_index_values = unlist(lapply(enipediaData$CleanedPlantName, function(x) {jaccard_index(x,removeTheWeirdness(externalData$plant))}))
+  
+  if(!is.null(externalData$state)){
+    ldiffState = levenshteinSim(externalData$state, 
+                                enipediaData$CleanedStateName)
     
-    jdiffState = jarowinkler(state, 
-                             enipediaCleanedStateName, 
+    jdiffState = jarowinkler(externalData$state, 
+                             enipediaData$CleanedStateName, 
                              r=0.5)
   }
   
-  if(owner != ""){
-    ldiffOwner = levenshteinSim(owner, 
-                                enipediaCleanedOwnerName)
+  if(!is.null(externalData$owner)){
+    ldiffOwner = levenshteinSim(externalData$owner, 
+                                enipediaData$CleanedOwnerName)
     
-    jdiffOwner = jarowinkler(owner, 
-                             enipediaCleanedOwnerName, 
+    jdiffOwner = jarowinkler(externalData$owner, 
+                             enipediaData$CleanedOwnerName, 
                              r=0.5)
     
     #Takes too long
-    #jaccard_index_values_owner = unlist(lapply(enipediaCleanedOwnerName, function(x) {jaccard_index(x,owner)}))
+    #jaccard_index_values_owner = unlist(lapply(enipediaData$CleanedOwnerName, function(x) {jaccard_index(x,enipediaData$owner)}))
   }
-  
-  
   
   #TODO allow json query strings to specify this
   distanceCutoff = 20000
   distanceScores = NULL
-  if(!is.null(latitude) && !is.null(longitude)){
+  if(!is.null(latitude) && !is.null(externalData$longitude)){
     
-    distances = distCosine(cbind(longitude, 
-                                 latitude), 
+    distances = distCosine(cbind(externalData$longitude, 
+                                 externalData$latitude), 
                            cbind(enipediaData$lon,
                                  enipediaData$lat)
     )
@@ -242,11 +164,11 @@ matchPowerPlants <- function(queryRequest, numResults=5){
     summedSquareOfDistances = summedSquareOfDistances + distanceScores^2
   } 
   
-  if (owner != ""){
+  if (externalData$owner != ""){
     summedSquareOfDistances = summedSquareOfDistances + ldiffOwner^2 + jdiffOwner^2
   }
-
-  if (state != ""){
+  
+  if (externalData$state != ""){
     summedSquareOfDistances = summedSquareOfDistances + ldiffState^2 + jdiffState^2
   }
   
@@ -254,23 +176,7 @@ matchPowerPlants <- function(queryRequest, numResults=5){
   
   locs = sort(dist, decreasing=TRUE, index.return=TRUE)$ix[c(1:numResults)]
   
-  allResultsForQuery = list()
-  for (loc in locs){
-    resultSet = list(id=enipediaData$x[loc],
-                     name=paste('name:',enipediaData$name[loc],'|',
-                                'owner:',removeTheWeirdness(enipediaData$owner[loc]), '|',
-                                'city:',removeTheWeirdness(enipediaData$city[loc]), sep=""),
-                     type=list(c(id="http://enipedia.tudelft.nl/wiki/Category:Powerplant",
-                                 name="Powerplant")),
-                     score=dist[loc],
-                     latitude = enipediaData$lat[loc],
-                     longitude = enipediaData$lon[loc],
-                     match=FALSE) # hard-coded letting the humans always check things off
-    
-    allResultsForQuery$result = c(allResultsForQuery$result,list(resultSet))
-  }
-  
-  return(allResultsForQuery)  
+  return(locs)
 }
 
 
@@ -309,49 +215,4 @@ matchEnergyCompany <- function (queryRequest, numResults=5) {
   return(allResultsForQuery)  
 }
 
-#processes single query requests
-processMatchingQueryRequest <- function (queryRequest, numResults=5) {  
-  
-  #see what thing we're matching on
-  if (queryRequest$type == "Category:Energy_Company"){
-    return(matchEnergyCompany(queryRequest, numResults))
-  } else { #assume we're trying to match power plants
-    return(matchPowerPlants(queryRequest, numResults))
-  }  
-}
 
-#This is the main function
-#TODO adapt this for Rserve implementation
-getMatches <- function(jsonString){
-  
-  request = fromJSON(jsonString)
-  
-  if (names(request)[1] == "q0") { #multiple queries 
-    #query results are appended to this
-    allResultsForAllQueries = list() 
-    queryCount = 1
-    for (queryRequest in request){
-      
-      print(queryRequest)
-      allResultsForQuery = processMatchingQueryRequest(queryRequest)    
-      
-      #this tells us which query we're looking at
-      #it's usually something like q0, q1, etc
-      queryIdentifier = names(request)[queryCount]
-      
-      #add query results here
-      allResultsForAllQueries[queryIdentifier] = list(allResultsForQuery)
-      
-      queryCount = queryCount + 1
-    }
-    #send output to calling php code
-    #write(toJSON(allResultsForAllQueries), stdout())
-    return(toJSON(allResultsForAllQueries))
-  } else { #single query
-    allResultsForQuery = processMatchingQueryRequest(request)
-    #send output to calling php code
-    #write(toJSON(allResultsForQuery), stdout())
-    return(toJSON(allResultsForQuery))
-  }
-  
-}

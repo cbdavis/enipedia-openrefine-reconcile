@@ -49,6 +49,7 @@ removeTheWeirdness <- function(text){
   text = gsub("'", "", text)
   text = trim(tolower(text))
   text = sapply(text, URLdecode)
+  text = removeStopWords(text) #remove terms that don't help us with matching
   return(text)
 }
 
@@ -92,4 +93,27 @@ tokenize <- function(text){
   text = removeTheWeirdness(text)
   tokenList = unique(unlist(strsplit(text, split=" ")))
   return(tokenList)
+}
+
+#TODO could just load these in from a file
+removeStopWords = function(text){
+  stopwords = c("les", 
+                "sa", 
+                "s a", 
+                "b v", 
+                "bv", 
+                "n v", 
+                "nv", 
+                "power plant", 
+                "power station")
+  for (stopword in stopwords){
+    #the stopword can be at the start, middle or end of text
+    searchTerm = paste("( |^)", stopword,"( |$)", sep="")
+    text = gsub(searchTerm, " ", text)
+  }
+  #convert consecutive whitespace to single space
+  text = gsub("\\s{2,}", " ", text)
+  #trim whitespace
+  text = gsub("^\\s+|\\s+$", "", text)
+  return(text)
 }
