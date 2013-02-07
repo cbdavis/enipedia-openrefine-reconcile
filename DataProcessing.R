@@ -35,19 +35,23 @@ extractCoordinates <- function(point){
 #convert text to the most boring form possible
 #this makes it easier to perform string comparisons
 removeTheWeirdness <- function(text){
+  #TODO can have most of this be one giant regex search and replace
   text = iconv(text, to="ASCII//TRANSLIT") #work with simple ascii - this doesn't do anything to help with misspellings
+  text = trim(tolower(text)) #everyone to lower case to make further processing easier
   text = gsub('http://enipedia.tudelft.nl/wiki/', '', text)
   text = gsub('\\)', '', text)
   text = gsub('\\(', '', text)
   text = gsub('/', '', text)
   text = gsub(',', ' ', text)
+  text = gsub("([a-z])\\.([a-z])", "\\1\\2", text) #remove periods between consecutive letters.  This will convert b.v. to bv, e.on to eon
   text = gsub('\\.', ' ', text)
   text = gsub('&', '', text)
   text = gsub('_', ' ', text)
   text = gsub('-', ' ', text)
+  text = gsub(':', ' ', text)
   text = gsub('  ', ' ', text)
   text = gsub("'", "", text)
-  text = trim(tolower(text))
+  text = gsub("([a-z])centrale( |$)", "\\1 centrale\\2", text) #the Dutch add centrale as a suffix to power plant names
   text = sapply(text, URLdecode)
   text = removeStopWords(text) #remove terms that don't help us with matching
   return(text)

@@ -33,8 +33,9 @@ retrieveCountryDataFromEnipedia <- function (country) {
                         OPTIONAL{?x prop:City ?city} .
                         ?x rdfs:label ?name . 
                         ?x prop:Country a:", gsub(" ", "_", country) ," . 
-                        OPTIONAL{?x prop:State ?state} .
-                        OPTIONAL{?x prop:Ownercompany ?owner}. 
+                        OPTIONAL{?x prop:EU_ETS_ID ?euetsID } . 
+                        OPTIONAL{?x prop:State ?state } .
+                        OPTIONAL{?x prop:Ownercompany ?owner }. 
                         ?x prop:Point ?point . 
                         }", sep="")
     d <- SPARQL(url=endpoint, query=queryString, format='csv', extra=list(format='text/csv'))
