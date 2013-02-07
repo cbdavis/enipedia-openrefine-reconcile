@@ -214,5 +214,3 @@ matchEnergyCompany <- function (queryRequest, numResults=5) {
   }  
   return(allResultsForQuery)  
 }
-
-

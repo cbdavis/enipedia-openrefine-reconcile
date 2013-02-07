@@ -117,3 +117,28 @@ removeStopWords = function(text){
   text = gsub("^\\s+|\\s+$", "", text)
   return(text)
 }
+
+getUniqueTokens <- function(charVector){
+  allUniqueTokens = unique(unlist(strsplit(paste(charVector, collapse=" "), split=" ")))
+  return(allUniqueTokens)
+}
+
+#this shows which entries contain which tokens
+getTokenLookupMap <- function(charVector){
+  #this is important - must declare as a list
+  tokenLookup = list()
+  charVector = removeTheWeirdness(charVector)
+  allUniqueTokens = getUniqueTokens(charVector)
+  
+  #this shows which of the entries contain which of the tokens
+  tokenLookup[allUniqueTokens] = NULL
+  curIndex = 1
+  for (name in charVector){
+    nameTokens = unlist(strsplit(name, split=" "))
+    for (token in nameTokens){
+      tokenLookup[[token]] = append(tokenLookup[[token]], curIndex)
+    }
+    curIndex = curIndex + 1
+  }
+  return(tokenLookup)
+}
