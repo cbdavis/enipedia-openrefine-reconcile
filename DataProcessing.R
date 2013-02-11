@@ -108,6 +108,11 @@ removeStopWords = function(text){
                 "bv", 
                 "n v", 
                 "nv", 
+                "de", 
+                "des", 
+                "la", 
+                "le", 
+                "du", 
                 "power plant", 
                 "power station")
   for (stopword in stopwords){
@@ -116,7 +121,7 @@ removeStopWords = function(text){
     text = gsub(searchTerm, " ", text)
   }
   #convert consecutive whitespace to single space
-  text = gsub("\\s{2,}", " ", text)
+  text = gsub("[ ]{2,}", " ", text)
   #trim whitespace
   text = gsub("^\\s+|\\s+$", "", text)
   return(text)
