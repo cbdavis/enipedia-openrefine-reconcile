@@ -46,9 +46,9 @@ retrieveCountryDataFromEnipedia <- function (country) {
       enipediaData$lon = coords$lon
       
       #generate cleaned versions of the names that are more suited for matching
-      enipediaData$CleanedPlantName = removeTheWeirdness(gsub(' Powerplant', '', enipediaData$name))
-      enipediaData$CleanedOwnerName = removeTheWeirdness(enipediaData$owner)
-      enipediaData$CleanedStateName = removeTheWeirdness(enipediaData$state)
+      enipediaData$CleanedPlantName = normalizeText(gsub(' Powerplant', '', enipediaData$name))
+      enipediaData$CleanedOwnerName = normalizeText(enipediaData$owner)
+      enipediaData$CleanedStateName = normalizeText(enipediaData$state)
       
     } else {
       print("no results for country")

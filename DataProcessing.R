@@ -34,26 +34,26 @@ extractCoordinates <- function(point){
 
 #convert text to the most boring form possible
 #this makes it easier to perform string comparisons
-removeTheWeirdness <- function(text){
+normalizeText <- function(text){
   #TODO can have most of this be one giant regex search and replace
   text = iconv(text, to="ASCII//TRANSLIT") #work with simple ascii - this doesn't do anything to help with misspellings
   text = trim(tolower(text)) #everyone to lower case to make further processing easier
   text = gsub('http://enipedia.tudelft.nl/wiki/', '', text)
   text = gsub('\\)', '', text)
   text = gsub('\\(', '', text)
-  text = gsub('/', '', text)
+  text = gsub('/', ' ', text)
   text = gsub(',', ' ', text)
-  text = gsub("([a-z])\\.([a-z])", "\\1\\2", text) #remove periods between consecutive letters.  This will convert b.v. to bv, e.on to eon
   text = gsub('\\.', ' ', text)
   text = gsub('&', '', text)
   text = gsub('_', ' ', text)
   text = gsub('-', ' ', text)
   text = gsub(':', ' ', text)
   text = gsub('  ', ' ', text)
-  text = gsub("'", "", text)
+  text = gsub("'", " ", text)
   text = gsub("([a-z])centrale( |$)", "\\1 centrale\\2", text) #the Dutch add centrale as a suffix to power plant names
   text = sapply(text, URLdecode)
   text = removeStopWords(text) #remove terms that don't help us with matching
+  names(text) = NULL #remove names - this is redundant and causes problems with RUnit tests
   return(text)
 }
 
@@ -74,7 +74,7 @@ convertQueryRequestToVector <- function(queryRequest){
     }
     if (tolower(property$p) == "owner" || tolower(property$p) == "ownercompany"){
       externalData$owner = property$v
-      externalData$owner = removeTheWeirdness(externalData$owner)
+      externalData$owner = normalizeText(externalData$owner)
     }
     if (tolower(property$p) == "latitude" || tolower(property$p) == "lat"){
       externalData$latitude = as.numeric(property$v)
@@ -94,7 +94,7 @@ convertQueryRequestToVector <- function(queryRequest){
 
 #return a set of tokens contained within a string
 tokenize <- function(text){
-  text = removeTheWeirdness(text)
+  text = normalizeText(text)
   tokenList = unique(unlist(strsplit(text, split=" ")))
   return(tokenList)
 }
@@ -136,7 +136,7 @@ getUniqueTokens <- function(charVector){
 getTokenLookupMap <- function(charVector){
   #this is important - must declare as a list
   tokenLookup = list()
-  charVector = removeTheWeirdness(charVector)
+  charVector = normalizeText(charVector)
   allUniqueTokens = getUniqueTokens(charVector)
   
   #this shows which of the entries contain which of the tokens

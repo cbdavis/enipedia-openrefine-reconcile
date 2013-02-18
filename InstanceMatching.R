@@ -83,8 +83,8 @@ matchPowerPlants <- function(queryRequest, numResults=5){
   for (loc in indicesOfCandidateMatches){
     resultSet = list(id=enipediaData$x[loc],
                      name=paste('name:',enipediaData$name[loc],'|',
-                                'owner:',removeTheWeirdness(enipediaData$owner[loc]), '|',
-                                'city:',removeTheWeirdness(enipediaData$city[loc]), sep=""),
+                                'owner:',normalizeText(enipediaData$owner[loc]), '|',
+                                'city:',normalizeText(enipediaData$city[loc]), sep=""),
                      type=list(c(id="http://enipedia.tudelft.nl/wiki/Category:Powerplant",
                                  name="Powerplant")),
                      score=dist[loc],
@@ -105,14 +105,14 @@ matchPowerPlants <- function(queryRequest, numResults=5){
 matchPowerPlantEntity <- function(externalData, enipediaData, numResults=5){
   
   #perform string matching
-  ldiff = levenshteinSim(removeTheWeirdness(externalData$plant), 
+  ldiff = levenshteinSim(normalizeText(externalData$plant), 
                          enipediaData$CleanedPlantName)
   
-  jdiff = jarowinkler(removeTheWeirdness(externalData$plant), 
+  jdiff = jarowinkler(normalizeText(externalData$plant), 
                       enipediaData$CleanedPlantName, 
                       r=0.5)
   
-  jaccard_index_values = unlist(lapply(enipediaData$CleanedPlantName, function(x) {jaccard_index(x,removeTheWeirdness(externalData$plant))}))
+  jaccard_index_values = unlist(lapply(enipediaData$CleanedPlantName, function(x) {jaccard_index(x,normalizeText(externalData$plant))}))
   
   if(!is.null(externalData$state)){
     ldiffState = levenshteinSim(externalData$state, 
@@ -185,15 +185,15 @@ matchEnergyCompany <- function (queryRequest, numResults=5) {
   
   #Don't query this if we already have it
   enipediaData = retrieveCompanyDataFromEnipedia()
-  enipediaCleanedName = removeTheWeirdness(enipediaData$name)
-  ldiff = levenshteinSim(removeTheWeirdness(queryRequest$query), 
+  enipediaCleanedName = normalizeText(enipediaData$name)
+  ldiff = levenshteinSim(normalizeText(queryRequest$query), 
                          enipediaCleanedName)
   
-  jdiff = jarowinkler(removeTheWeirdness(queryRequest$query), 
+  jdiff = jarowinkler(normalizeText(queryRequest$query), 
                       enipediaCleanedName, 
                       r=0.5)
   
-  jaccard_index_values = unlist(lapply(enipediaCleanedName, function(x) {jaccard_index(x,removeTheWeirdness(queryRequest$query))}))
+  jaccard_index_values = unlist(lapply(enipediaCleanedName, function(x) {jaccard_index(x,normalizeText(queryRequest$query))}))
   
   dist = sqrt(ldiff^2 + jdiff^2 + jaccard_index_values^2)
   
