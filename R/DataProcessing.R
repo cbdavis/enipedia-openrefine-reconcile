@@ -180,7 +180,8 @@ getTokenLookupMap <- function(charVector, removeNumbers=TRUE){
 
 system.time(calculateSelfInformationOfIntersectingTokens(data1, data2))
 
-
+#This code constructs a matrix where rows represent tokens and columns represent entities in a particular data set
+#The presence of a 1 indicates that the token is present in a particular entity in a data set
 #allTokens means all the tokens for both data sets
 getTokenEntityMatrix <- function(allTokens, data){
   tokensMatrixData = sparseMatrix(i=length(allTokens), j=length(data), x=0)
@@ -233,9 +234,17 @@ calculateSelfInformationOfIntersectingTokens <- function(data1, data2){
   #TODO not used
   intersectionsMatrix = t(tokensMatrixData1) %*% tokensMatrixData2
 
+  # TODO this needs to be verified
+  # Calculating tokensMatrixData2 * selfInformation converts the 1's in the matrix 
+  # (which represents that a token is contained in a particular entity)
+  # to the value of the self information for that token
+  # Multiplying this then by t(tokensMatrixData1) then zeros out values for tokens not shared by both entities
+  # and also adds up the self information scores
   selfInformationOfEntitiesWithIntersectingTokens = t(tokensMatrixData1) %*% (tokensMatrixData2 * selfInformation)
 
+  #TODO do something useful here to return a subset of results
   for (i in c(1:length(data1))){
     scores = sort(selfInformationOfEntitiesWithIntersectingTokens[i,], decreasing=TRUE, index.return=TRUE)
+    data2[scores$ix[c(1:5)]]
   }
 }
