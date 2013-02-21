@@ -8,12 +8,6 @@ library(gdata) #trim
 library(RecordLinkage) #string matching
 library(geosphere) #distance calculations
 
-#TODO take these out - shouldn't need this if have a proper package
-#setwd("/home/cbdavis/enipedia-openrefine-reconcile")
-#source("DataRetrieval.R") # gets data from enipedia
-#source("DataProcessing.R") # cleans up data into more usable forms
-#source("StringMatching.R") # Jaccard index function, etc.
-
 #This is the main function that processes reconciliation requests from Open Refine
 getMatches <- function(jsonString){
   

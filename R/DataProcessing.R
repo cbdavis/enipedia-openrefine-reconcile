@@ -55,6 +55,9 @@ normalizeText <- function(text){
   text = gsub(':', ' ', text)
   text = gsub('  ', ' ', text)
   text = gsub("'", " ", text)
+  text = gsub("\n", " ", text)
+  text = gsub('"', " ", text)
+  text = gsub("\\\\", " ", text)
   text = gsub("([a-z])centrale( |$)", "\\1 centrale\\2", text) #the Dutch add centrale as a suffix to power plant names
   text = sapply(text, URLdecode)
   text = removeStopWords(text) #remove terms that don't help us with matching
@@ -133,10 +136,16 @@ removeStopWords = function(text){
 }
 
 #removeNumbers only works for integers currently
-getUniqueTokens <- function(charVector, removeNumbers=TRUE){
-  allUniqueTokens = unique(unlist(strsplit(paste(charVector, collapse=" "), split=" ")))
+#this expects a a single string
+#minTokenLength can be disabled by using values <= 0
+getUniqueTokens <- function(charVector, removeNumbers=TRUE, minTokenLength=3){
+  allUniqueTokens = sort(unique(unlist(strsplit(paste(charVector, collapse=" "), split=" "))))
+  allUniqueTokens = normalizeText(allUniqueTokens)
   if (removeNumbers == TRUE){
     allUniqueTokens = allUniqueTokens[!aaply(allUniqueTokens, .margins=1, .fun=isInteger)]
+  }
+  if (minTokenLength > 0){
+    allUniqueTokens = allUniqueTokens[nchar(allUniqueTokens) >= minTokenLength]
   }
   return(allUniqueTokens)
 }
@@ -155,6 +164,7 @@ getTokenLookupMap <- function(charVector, removeNumbers=TRUE){
   for (name in charVector){
     nameTokens = unlist(strsplit(name, split=" "))
     for (token in nameTokens){
+      token = normalizeText(token)
       if (removeNumbers==TRUE){ #add extra check to make sure that we aren't adding numbers
         if (!isInteger(token)){ 
           tokenLookup[[token]] = append(tokenLookup[[token]], curIndex)  
@@ -162,10 +172,70 @@ getTokenLookupMap <- function(charVector, removeNumbers=TRUE){
       } else {
         tokenLookup[[token]] = append(tokenLookup[[token]], curIndex)    
       }
-      
-      
     }
     curIndex = curIndex + 1
   }
   return(tokenLookup)
+}
+
+system.time(calculateSelfInformationOfIntersectingTokens(data1, data2))
+
+
+#allTokens means all the tokens for both data sets
+getTokenEntityMatrix <- function(allTokens, data){
+  tokensMatrixData = sparseMatrix(i=length(allTokens), j=length(data), x=0)
+  rownames(tokensMatrixData) = allTokens
+  
+  #lookup vector that helps us find the index for a particular token
+  rowNameLookup = c(1:length(allTokens))
+  names(rowNameLookup) = allTokens
+
+  #returns a list where each entry is a vector of tokens for that entity
+  uniqueTokensPerEntry = lapply(data, getUniqueTokens)
+  
+  tokenIDSequence = c(1:length(uniqueTokensPerEntry))
+  numTokensPerEntry = unlist(lapply(uniqueTokensPerEntry, length))
+  
+  #the matrix can be populated quickly if we pass it a two column matrix
+  #where the 1st column is the row index and the 2nd column is the column index
+  rowColumnIndices = cbind(rowNameLookup[unlist(uniqueTokensPerEntry)], rep(tokenIDSequence, numTokensPerEntry))
+  tokensMatrixData[rowColumnIndices] = 1
+  
+  return(tokensMatrixData)
+}
+
+#soup vectors must be present in both data1 and data2 - matching will be done on these
+#returned is a list, $x is the value, $ix is the index
+#The input consists of two vectors consisting of strings which can be further tokenized
+#TODO self information is only calculated by looking at one of the data sets.  Are there any test cases where the values calculated from different data sets could lead to radically different resutls?
+calculateSelfInformationOfIntersectingTokens <- function(data1, data2){
+
+  allTokens = getUniqueTokens(c(data1, data2))
+  
+  rowNameLookup = c(1:length(allTokens))
+  names(rowNameLookup) = allTokens
+
+  #these are matrices where the presence of a 1 indicates that the token (row) is present in an entity (column)
+  tokensMatrixData1 = getTokenEntityMatrix(allTokens, data1)
+  tokensMatrixData2 = getTokenEntityMatrix(allTokens, data2)
+  
+  #self information is calculated by looking at all of the tokens in both data sets
+  rowSumMatrix1 = rowSums(tokensMatrixData1)
+  rowSumMatrix2 = rowSums(tokensMatrixData2)
+  countPerToken = rowSumMatrix1 + rowSumMatrix2
+  numEntities = length(data1) + length(data2)
+  selfInformation = -log10(countPerToken / numEntities) #basically, how often does this token occur in the data
+  names(selfInformation) = allTokens
+  
+  # create a matrix of the intersections between the two different data sources
+  # data1 entries are rows, data2 entries are columns
+  #this seems to give the count of intersecting tokens
+  #TODO not used
+  intersectionsMatrix = t(tokensMatrixData1) %*% tokensMatrixData2
+
+  selfInformationOfEntitiesWithIntersectingTokens = t(tokensMatrixData1) %*% (tokensMatrixData2 * selfInformation)
+
+  for (i in c(1:length(data1))){
+    scores = sort(selfInformationOfEntitiesWithIntersectingTokens[i,], decreasing=TRUE, index.return=TRUE)
+  }
 }
