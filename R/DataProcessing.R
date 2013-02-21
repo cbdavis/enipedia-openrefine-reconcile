@@ -2,6 +2,11 @@
 
 # These functions are used for processing data into more usable forms.
 
+#http://stackoverflow.com/questions/3476782/how-to-check-if-the-number-is-integer
+isInteger <- function(N){
+  return(!length(grep("[^[:digit:]]", as.character(N))))
+}
+
 extractCoordinates <- function(point){
   coords = colsplit(point, split=",", names=c("lat", "lon"))
   
@@ -127,17 +132,22 @@ removeStopWords = function(text){
   return(text)
 }
 
-getUniqueTokens <- function(charVector){
+#removeNumbers only works for integers currently
+getUniqueTokens <- function(charVector, removeNumbers=TRUE){
   allUniqueTokens = unique(unlist(strsplit(paste(charVector, collapse=" "), split=" ")))
+  if (removeNumbers == TRUE){
+    allUniqueTokens = allUniqueTokens[!aaply(allUniqueTokens, .margins=1, .fun=isInteger)]
+  }
   return(allUniqueTokens)
 }
 
 #this shows which entries contain which tokens
-getTokenLookupMap <- function(charVector){
-  #this is important - must declare as a list
+#removeNumbers only works for integers currently
+getTokenLookupMap <- function(charVector, removeNumbers=TRUE){
+  #must declare as a list as there are likely multiple entries that contain this token
   tokenLookup = list()
   charVector = normalizeText(charVector)
-  allUniqueTokens = getUniqueTokens(charVector)
+  allUniqueTokens = getUniqueTokens(charVector, removeNumbers)
   
   #this shows which of the entries contain which of the tokens
   tokenLookup[allUniqueTokens] = NULL
@@ -145,7 +155,15 @@ getTokenLookupMap <- function(charVector){
   for (name in charVector){
     nameTokens = unlist(strsplit(name, split=" "))
     for (token in nameTokens){
-      tokenLookup[[token]] = append(tokenLookup[[token]], curIndex)
+      if (removeNumbers==TRUE){ #add extra check to make sure that we aren't adding numbers
+        if (!isInteger(token)){ 
+          tokenLookup[[token]] = append(tokenLookup[[token]], curIndex)  
+        }
+      } else {
+        tokenLookup[[token]] = append(tokenLookup[[token]], curIndex)    
+      }
+      
+      
     }
     curIndex = curIndex + 1
   }
