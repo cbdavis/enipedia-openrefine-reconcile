@@ -1,0 +1,8 @@
+Package: EnipediaOpenrefineReconcile
+Version: 0.1
+Date: 2013-02-21
+Title: enipedia-openrefine-reconcile
+Author: Chris Davis
+Maintainer: Chris Davis <c.b.davis@tudelft.nl>
+Description: Matching utilities for OpenRefine Reconciliation, tailored to open energy data
+License: GPL2.0
