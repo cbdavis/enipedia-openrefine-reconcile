@@ -18,7 +18,6 @@ getPrefixes <- function(){
 #country is the two digit code - NL, DE, etc
 retrievePlantDataFromEPRTR <- function(country){
   endpoint = "http://enipedia.tudelft.nl/sparql"
-  d <- SPARQL(url=endpoint, query=queryString, format='csv', extra=list(format='text/csv'))
   queryString = paste(getPrefixes(), 
                       "select * where {
                         ?x rdf:type eprtr:Facility . 
@@ -33,6 +32,7 @@ retrievePlantDataFromEPRTR <- function(country){
                         OPTIONAL{ ?x eprtr:latestReport ?latestReport . 
                         ?latestReport eprtr:parentCompanyName ?parentCompanyName . }
                       }", sep="")
+  d <- SPARQL(url=endpoint, query=queryString, format='csv', extra=list(format='text/csv'))
   data = d$results
   return(data)
 }
