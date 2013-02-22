@@ -7,6 +7,7 @@ library(reshape) #colsplit
 library(gdata) #trim
 library(RecordLinkage) #string matching
 library(geosphere) #distance calculations
+library(Matrix) #sparse matrices
 
 #This is the main function that processes reconciliation requests from Open Refine
 getMatches <- function(jsonString){

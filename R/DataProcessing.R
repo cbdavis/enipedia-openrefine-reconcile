@@ -209,10 +209,12 @@ getTokenEntityMatrix <- function(allTokens, data){
 #These are essentially adjacency matrices indicating that a particular token is found within a particular data entity
 #This method does fuzzy string matching so it's easier to find alternative forms of the same token in use
 updateTokensEntityMatrixWithFuzzyStringMatch <- function(tokensMatrixData1, tokensMatrixData2, allTokens, equivalenceScore=0.9){
+  #TODO this code is a bit slow - possible to parallelize?  Need to profile and find the bottlenecks
   for (token in allTokens){
-    print(token)
     jwScore = jarowinkler(token, allTokens)
     lScore = levenshteinSim(token, allTokens)
+    #if either the Jaro Winkler or Levenshtein metric are greater than the equivalence score
+    #then consider the tokens to be the same
     locs = which(jwScore > equivalenceScore | lScore > equivalenceScore)
     if (length(locs) > 1)  {
       colsums = colSums(tokensMatrixData1[locs,])
