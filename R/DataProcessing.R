@@ -203,11 +203,40 @@ getTokenEntityMatrix <- function(allTokens, data){
   return(tokensMatrixData)
 }
 
+#takes as input two matrices for two different data sets
+#rows are all the tokens (with the same order for both matrices)
+#columns are entities in each data set
+#These are essentially adjacency matrices indicating that a particular token is found within a particular data entity
+#This method does fuzzy string matching so it's easier to find alternative forms of the same token in use
+updateTokensEntityMatrixWithFuzzyStringMatch <- function(tokensMatrixData1, tokensMatrixData2, allTokens, equivalenceScore=0.9){
+  for (token in allTokens){
+    print(token)
+    jwScore = jarowinkler(token, allTokens)
+    lScore = levenshteinSim(token, allTokens)
+    locs = which(jwScore > equivalenceScore | lScore > equivalenceScore)
+    if (length(locs) > 1)  {
+      colsums = colSums(tokensMatrixData1[locs,])
+      nonZeroLocs = which(colsums > 0)
+      #it's possible that none off the tokens may be used in this data set, but appear in another data set represented by a different matrix
+      if (length(nonZeroLocs) > 0){ 
+        tokensMatrixData1[locs,nonZeroLocs] = 1
+      }
+      
+      colsums = colSums(tokensMatrixData2[locs,])
+      nonZeroLocs = which(colsums > 0)
+      #it's possible that none off the tokens may be used in this data set, but appear in another data set represented by a different matrix
+      if (length(nonZeroLocs) > 0){ 
+        tokensMatrixData2[locs,nonZeroLocs] = 1
+      }
+    }
+  }
+  return(list(tokensMatrixData1, tokensMatrixData2))
+}
+
+
 #soup vectors must be present in both data1 and data2 - matching will be done on these
-#returned is a list, $x is the value, $ix is the index
 #The input consists of two vectors consisting of strings which can be further tokenized
-#TODO self information is only calculated by looking at one of the data sets.  Are there any test cases where the values calculated from different data sets could lead to radically different resutls?
-calculateSelfInformationOfIntersectingTokens <- function(data1, data2){
+calculateSelfInformationOfIntersectingTokens <- function(data1, data2, useFuzzyTokenMatches=FALSE, equivalenceScore=0.9){
 
   allTokens = getUniqueTokens(c(data1, data2))
   
@@ -218,6 +247,13 @@ calculateSelfInformationOfIntersectingTokens <- function(data1, data2){
   tokensMatrixData1 = getTokenEntityMatrix(allTokens, data1)
   tokensMatrixData2 = getTokenEntityMatrix(allTokens, data2)
   
+  if (useFuzzyTokenMatches == TRUE){
+    tmp = updateTokensEntityMatrixWithFuzzyStringMatch(tokensMatrixData1, tokensMatrixData2, allTokens, equivalenceScore)
+    tokensMatrixData1 = tmp[[1]]
+    tokensMatrixData2 = tmp[[2]]
+    rm(tmp)
+  }
+  
   #self information is calculated by looking at all of the tokens in both data sets
   rowSumMatrix1 = rowSums(tokensMatrixData1)
   rowSumMatrix2 = rowSums(tokensMatrixData2)
@@ -226,12 +262,6 @@ calculateSelfInformationOfIntersectingTokens <- function(data1, data2){
   selfInformation = -log10(countPerToken / numEntities) #basically, how often does this token occur in the data
   names(selfInformation) = allTokens
   
-  # create a matrix of the intersections between the two different data sources
-  # data1 entries are rows, data2 entries are columns
-  #this seems to give the count of intersecting tokens
-  #TODO not used
-  intersectionsMatrix = t(tokensMatrixData1) %*% tokensMatrixData2
-
   # TODO this needs to be verified
   # Calculating tokensMatrixData2 * selfInformation converts the 1's in the matrix 
   # (which represents that a token is contained in a particular entity)
@@ -240,12 +270,8 @@ calculateSelfInformationOfIntersectingTokens <- function(data1, data2){
   # and also adds up the self information scores
   selfInformationOfEntitiesWithIntersectingTokens = t(tokensMatrixData1) %*% (tokensMatrixData2 * selfInformation)
 
-  #TODO do something useful here to return a subset of results
-  #for (i in c(1:length(data1))){
-  #  scores = sort(selfInformationOfEntitiesWithIntersectingTokens[i,], decreasing=TRUE, index.return=TRUE)
-  #  data2[scores$ix[c(1:5)]]
-  #}
-  
-  # TODO it would be useful to pass back several of the matrices, so we can know things like which tokens are intersecting for which entites, etc.
-  return(selfInformationOfEntitiesWithIntersectingTokens)
+  #return multiple types of data that may be useful in further processing
+  dataToReturn = list(selfInformationOfEntitiesWithIntersectingTokens, tokensMatrixData1, tokensMatrixData2, allTokens)
+  names(dataToReturn) = c("selfInformationOfEntitiesWithIntersectingTokens", "tokensMatrixData1", "tokensMatrixData2", "allTokens")
+  return(dataToReturn)
 }
