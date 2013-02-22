@@ -3,11 +3,58 @@
 #These are common prefixes used with the Enipedia SPARQL endpoint
 getPrefixes <- function(){
   return("PREFIX a: <http://enipedia.tudelft.nl/wiki/>
-         PREFIX prop: <http://enipedia.tudelft.nl/wiki/Property:>
-         PREFIX cat: <http://enipedia.tudelft.nl/wiki/Category:>
-         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-         PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-         PREFIX fn: <http://www.w3.org/2005/xpath-functions#>")
+          PREFIX prop: <http://enipedia.tudelft.nl/wiki/Property:>
+          PREFIX cat: <http://enipedia.tudelft.nl/wiki/Category:>
+          PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+          PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+          PREFIX euets: <http://enipedia.tudelft.nl/data/EU-ETS/>
+          PREFIX fn: <http://www.w3.org/2005/xpath-functions#>
+          PREFIX wgs84: <http://www.w3.org/2003/01/geo/wgs84_pos#>
+          PREFIX eprtr: <http://prtr.ec.europa.eu/rdf/schema.rdf#>
+          PREFIX eprtrResource: <http://prtr.ec.europa.eu/rdf/>
+         ")
+}
+
+#country is the two digit code - NL, DE, etc
+retrievePlantDataFromEPRTR <- function(country){
+  endpoint = "http://enipedia.tudelft.nl/sparql"
+  d <- SPARQL(url=endpoint, query=queryString, format='csv', extra=list(format='text/csv'))
+  queryString = paste(getPrefixes(), 
+                      "select * where {
+                        ?x rdf:type eprtr:Facility . 
+                        ?x eprtr:facilityName ?name . 
+                        ?x eprtr:facilityID ?facilityID . 
+                        ?x eprtr:inCountry <http://prtr.ec.europa.eu/rdf/country/", country,">
+                        OPTIONAL{ ?x wgs84:lat ?lat } . 
+                        OPTIONAL{ ?x wgs84:long ?long } . 
+                        OPTIONAL{ ?x eprtr:streetName ?streetName } . 
+                        OPTIONAL{ ?x eprtr:city ?city } . 
+                        OPTIONAL{ ?x eprtr:postalCode ?postalCode } . 
+                        OPTIONAL{ ?x eprtr:latestReport ?latestReport . 
+                        ?latestReport eprtr:parentCompanyName ?parentCompanyName . }
+                      }", sep="")
+  data = d$results
+  return(data)
+}
+
+#country is the two digit code - NL, DE, etc
+retrievePlantDataFromEUETS <- function(country){
+  endpoint = "http://enipedia.tudelft.nl/sparql"
+  queryString = paste(getPrefixes(), "select * where {
+                        ?installation rdfs:label ?name . 
+                        ?installation euets:account ?account . 
+                        ?installation euets:euetsID ?euetsID . 
+                        ?installation euets:installationIdentifier ?installationIdentifier . 
+                        OPTIONAL{?installation euets:address1 ?address1 } . 
+                        OPTIONAL{?installation euets:address2 ?address2 } . 
+                        OPTIONAL{?installation euets:city ?city } . 
+                        ?installation euets:countryCode \"", country, "\" . 
+                        ?account euets:AccountHolder ?account_holder .
+                        ?account euets:identifierInReg ?identifierInReg . 
+                      }", sep="")
+  d <- SPARQL(url=endpoint, query=queryString, format='csv', extra=list(format='text/csv'))
+  data = d$results
+  return(data)
 }
 
 retrieveCompanyDataFromEnipedia <- function(){
