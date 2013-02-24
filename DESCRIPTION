@@ -6,3 +6,4 @@ Author: Chris Davis
 Maintainer: Chris Davis <c.b.davis@tudelft.nl>
 Description: Matching utilities for OpenRefine Reconciliation, tailored to open energy data
 License: GPL2.0
+Depends: SPARQL, rjson, reshape, gdata, RecordLinkage, geosphere, Matrix
