@@ -189,6 +189,8 @@ getTokenEntityMatrix <- function(allTokens, data){
   rowNameLookup = c(1:length(allTokens))
   names(rowNameLookup) = allTokens
 
+  #TODO this can be parallelized
+ 
   #returns a list where each entry is a vector of tokens for that entity
   uniqueTokensPerEntry = lapply(data, getUniqueTokens)
   
@@ -210,28 +212,76 @@ getTokenEntityMatrix <- function(allTokens, data){
 #This method does fuzzy string matching so it's easier to find alternative forms of the same token in use
 updateTokensEntityMatrixWithFuzzyStringMatch <- function(tokensMatrixData1, tokensMatrixData2, allTokens, equivalenceScore=0.9){
   #TODO this code is a bit slow - possible to parallelize?  Need to profile and find the bottlenecks
-  for (token in allTokens){
-    jwScore = jarowinkler(token, allTokens)
-    lScore = levenshteinSim(token, allTokens)
-    #if either the Jaro Winkler or Levenshtein metric are greater than the equivalence score
-    #then consider the tokens to be the same
+    
+  # Don't have to compare all tokens versus all other tokens since double comparisons with occur
+  # Here we compare the token at position i with those at i+1 to n
+  # and then increment i by 1 until everything has been compared
+  
+  offset = 1
+  token = head(allTokens, n=1)
+  tokensToCompare = tail(allTokens, n=-1)
+
+  equivalentEntries = list()
+  
+  while(length(tokensToCompare) > 0){
+    print(token)
+    jwScore = jarowinkler(token, tokensToCompare)
+    lScore = levenshteinSim(token, tokensToCompare)
+    token = head(tokensToCompare, n=1)
+    tokensToCompare = tail(tokensToCompare, n=-1)
     locs = which(jwScore > equivalenceScore | lScore > equivalenceScore)
     if (length(locs) > 1)  {
+      originalLoc = offset #add in offset since we're removing tokens from the start of the vector
+      equivalentLocs = locs + offset
+      equivalentEntries[originalLoc] = equivalentLocs
+      
       colsums = colSums(tokensMatrixData1[locs,])
       nonZeroLocs = which(colsums > 0)
       #it's possible that none off the tokens may be used in this data set, but appear in another data set represented by a different matrix
       if (length(nonZeroLocs) > 0){ 
-        tokensMatrixData1[locs,nonZeroLocs] = 1
+       tokensMatrixData1[locs,nonZeroLocs] = 1
       }
       
       colsums = colSums(tokensMatrixData2[locs,])
       nonZeroLocs = which(colsums > 0)
       #it's possible that none off the tokens may be used in this data set, but appear in another data set represented by a different matrix
       if (length(nonZeroLocs) > 0){ 
-        tokensMatrixData2[locs,nonZeroLocs] = 1
+       tokensMatrixData2[locs,nonZeroLocs] = 1
       }
     }
+    offset = offset + 1
   }
+  
+  
+#   
+#   for (token in allTokens){
+#     print(token)
+#     jwScore = jarowinkler(token, allTokens)
+#     lScore = levenshteinSim(token, allTokens)
+# 
+#     #if either the Jaro Winkler or Levenshtein metric are greater than the equivalence score
+#     #then consider the tokens to be the same
+#     locs = which(jwScore > equivalenceScore | lScore > equivalenceScore)
+#     
+#     if (length(locs) > 1)  {
+#     }
+#     
+# #      if (length(locs) > 1)  {
+# #        colsums = colSums(tokensMatrixData1[locs,])
+# #        nonZeroLocs = which(colsums > 0)
+# #        #it's possible that none off the tokens may be used in this data set, but appear in another data set represented by a different matrix
+# #        if (length(nonZeroLocs) > 0){ 
+# #          tokensMatrixData1[locs,nonZeroLocs] = 1
+# #        }
+# #        
+# #        colsums = colSums(tokensMatrixData2[locs,])
+# #        nonZeroLocs = which(colsums > 0)
+# #        #it's possible that none off the tokens may be used in this data set, but appear in another data set represented by a different matrix
+# #        if (length(nonZeroLocs) > 0){ 
+# #          tokensMatrixData2[locs,nonZeroLocs] = 1
+# #        }
+# #      }
+#   }
   return(list(tokensMatrixData1, tokensMatrixData2))
 }
 
