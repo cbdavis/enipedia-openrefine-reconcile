@@ -121,6 +121,10 @@ removeStopWords = function(text){
                 "la", 
                 "le", 
                 "du", 
+                "los", 
+                "las", 
+                "el", 
+                "del", 
                 "power plant", 
                 "power station")
   for (stopword in stopwords){

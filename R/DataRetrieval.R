@@ -45,9 +45,11 @@ retrievePlantDataFromEUETS <- function(country){
                         ?installation euets:account ?account . 
                         ?installation euets:euetsID ?euetsID . 
                         ?installation euets:installationIdentifier ?installationIdentifier . 
-                        OPTIONAL{?installation euets:address1 ?address1 } . 
-                        OPTIONAL{?installation euets:address2 ?address2 } . 
-                        OPTIONAL{?installation euets:city ?city } . 
+                        OPTIONAL{ ?installation euets:latitude ?lat } . 
+                        OPTIONAL{ ?installation euets:longitude ?long } . 
+                        OPTIONAL{ ?installation euets:address1 ?address1 } . 
+                        OPTIONAL{ ?installation euets:address2 ?address2 } . 
+                        OPTIONAL{ ?installation euets:city ?city } . 
                         ?installation euets:countryCode \"", country, "\" . 
                         ?account euets:AccountHolder ?account_holder .
                         ?account euets:identifierInReg ?identifierInReg . 
