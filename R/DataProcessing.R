@@ -331,3 +331,58 @@ calculateSelfInformationOfIntersectingTokens <- function(data1, data2, useFuzzyT
   names(dataToReturn) = c("selfInformationOfEntitiesWithIntersectingTokens", "tokensMatrixData1", "tokensMatrixData2", "allTokens")
   return(dataToReturn)
 }
+
+# This only returns the entities from two data sets that are each other's best matching candidates
+# This function is an attempt to give the user first the (likely) obvious matches
+returnMutualBestCandidates <- function(selfInfoOfIntersections){
+  rowMaxLocations = apply(selfInfoOfIntersections, MARGIN=1, FUN=which.max)
+  colMaxLocations = apply(selfInfoOfIntersections, MARGIN=2, FUN=which.max)
+  
+  colsToKeep = c()
+  rowsToKeep = c()
+  for (colNum in c(1:length(colMaxLocations))){
+    if (colNum == rowMaxLocations[colMaxLocations[colNum]]){
+      #keep this as a probable match - these entities correspond to each other better than any other entitiy
+      colsToKeep = c(colsToKeep, colNum)
+      rowsToKeep = c(rowsToKeep, colMaxLocations[colNum])
+    } 
+  }
+  
+  rowColumnsOfBestMatches = cbind(rowsToKeep, colsToKeep)
+  
+  return(rowColumnsOfBestMatches)
+}
+
+calculateMutualInformationOfIntersectingTokens <- function(tokensMatrixData1, tokensMatrixData2){
+  #find probability of tokens occurring
+  rowSumMatrix1 = rowSums(tokensMatrixData1)
+  rowSumMatrix2 = rowSums(tokensMatrixData2)
+  countPerToken = rowSumMatrix1 + rowSumMatrix2
+  numEntities = dim(tokensMatrixData1)[2] + dim(tokensMatrixData2)[2]
+  tokenProbability = countPerToken / numEntities #basically, how often does this token occur in the data
+  
+  # Now need to find co-occurrence of tokens.  We know Pi, Pj, but not Pij
+  
+  # This should give me an indication of which tokens co-occur the most
+  test = tokensMatrixData1 %*% t(tokensMatrixData1)
+  # zero out the diagonal, basically says that a token co-occurs with itself
+  # this is more like how many times does it occur in the data, which could be useful if can figure out a smart way to use this information
+  diag(test) = 0
+  
+  allTokens = something$allTokens
+  # this shows which tokens co-occur the most
+  allTokens[which(test == max(test), arr.ind = TRUE)]
+  # matrix indicating the probability that two tokens will co-occur
+  Pij = test / numEntities
+  
+  PiPj = tokenProbability %*% t(tokenProbability)
+  
+  intersectingTokens = which(test > 0, arr.ind = TRUE)
+  
+  Pi = tokenProbability[intersectingTokens[,1]]
+  Pj = tokenProbability[intersectingTokens[,2]]
+  
+  mutualInformation = Pij[intersectingTokens] * log2(Pij[intersectingTokens] / (Pi * Pj))
+  
+  return(mutualInformation)
+}
