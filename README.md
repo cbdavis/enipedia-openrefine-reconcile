@@ -13,19 +13,19 @@ bash ./checkBuildAndInstall.sh
 
 Otherwise, it can be built and installed via the following steps:
 
-Check that everything is ok:
+1) Check that everything is ok:
 <pre>
 cd Directory/Of/enipedia-openrefine-reconcile
 R CMD check .
 </pre>
 
-Build:
+2) Build:
 <pre>
 cd .. 
 R CMD build enipedia-openrefine-reconcile
 </pre>
 
-Install it so that it is accessible within the R environment:
+3) Install it so that it is accessible within the R environment:
 <pre>
 sudo R CMD INSTALL EnipediaOpenrefineReconcile_0.1.tar.gz
 </pre>
