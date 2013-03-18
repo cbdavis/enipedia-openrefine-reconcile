@@ -4,6 +4,15 @@ This contains R code used to set up a OpenRefine reconciliation service for the 
 
 The code is organized as a package to make it easier to work with.
 
+The packages can be built and installed via the commands below:
+
+<pre>
+cd Directory/Of/enipedia-openrefine-reconcile
+bash ./checkBuildAndInstall.sh
+</pre>
+
+Otherwise, it can be built and installed via the following steps:
+
 Check that everything is ok:
 <pre>
 cd Directory/Of/enipedia-openrefine-reconcile
@@ -18,7 +27,7 @@ R CMD build enipedia-openrefine-reconcile
 
 Install it so that it is accessible within the R environment:
 <pre>
-R CMD INSTALL EnipediaOpenrefineReconcile_0.1.tar.gz
+sudo R CMD INSTALL EnipediaOpenrefineReconcile_0.1.tar.gz
 </pre>
 
 The functions can then be accessed from within R code by first declaring:
