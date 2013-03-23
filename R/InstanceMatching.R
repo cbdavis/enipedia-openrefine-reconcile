@@ -8,6 +8,7 @@ library(gdata) #trim
 library(RecordLinkage) #string matching
 library(geosphere) #distance calculations
 library(Matrix) #sparse matrices
+library(RCurl) # download data from the internet - used for DataRetrieval.R
 
 #This is the main function that processes reconciliation requests from Open Refine
 getMatches <- function(jsonString){

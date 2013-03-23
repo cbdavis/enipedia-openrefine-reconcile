@@ -204,6 +204,8 @@ getTokenEntityMatrix <- function(allTokens, data){
   #the matrix can be populated quickly if we pass it a two column matrix
   #where the 1st column is the row index and the 2nd column is the column index
   rowColumnIndices = cbind(rowNameLookup[unlist(uniqueTokensPerEntry)], rep(tokenIDSequence, numTokensPerEntry))
+  # get rid of duplicated i j values for the matrix
+  rowColumnIndices = rowColumnIndices[!duplicated(rowColumnIndices),]
   tokensMatrixData[rowColumnIndices] = 1
   
   return(tokensMatrixData)

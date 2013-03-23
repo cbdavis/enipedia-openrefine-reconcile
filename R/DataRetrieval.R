@@ -15,6 +15,23 @@ getPrefixes <- function(){
          ")
 }
 
+retrievePlantDataFromGlobalEnergyObservatory <- function(country){
+  scraperURL = "https://api.scraperwiki.com/api/1.0/datastore/sqlite?format=csv&name=global_energy_observatory_power_plants&query=select+*+from+`swdata`&apikey="
+  file="GlobalEnergyObservatory.csv"
+  if (file.exists(file) == FALSE) {
+    f = CFILE(file, mode="wb")
+    curlPerform(url = scraperURL, writedata = f@ref)
+    close(f)
+  }
+  geoData = read.csv(file, header=TRUE)
+  locs = which(geoData$Country == country)
+  if (length(locs) == 0){
+    errorMessage = paste(country, "is not found in list of valid countries for the Global Energy Observatory, valid countries are ", paste(unique(sort(geoData$Country)), collapse=", "))
+  }
+  geoData = geoData[locs,]
+  return(geoData)
+}
+
 #country is the two digit code - NL, DE, etc
 retrievePlantDataFromEPRTR <- function(country){
   endpoint = "http://enipedia.tudelft.nl/sparql"
