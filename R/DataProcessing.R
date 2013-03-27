@@ -124,7 +124,9 @@ removeStopWords = function(text){
                 "los", 
                 "las", 
                 "el", 
-                "del", 
+                "del",
+                "inc", 
+                "ltd", 
                 "power plant", 
                 "power station")
   for (stopword in stopwords){

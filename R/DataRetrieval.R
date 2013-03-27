@@ -54,6 +54,22 @@ retrievePlantDataFromEPRTR <- function(country){
   return(data)
 }
 
+#This returns a lookup table
+retrieveFacilityIDAndNationalIDFromEPRTR <- function(country){
+  endpoint = "http://enipedia.tudelft.nl/sparql"
+  queryString = paste(getPrefixes(), 
+                      "select distinct ?facilityID ?nationalID where {
+                        ?facilityReport rdf:type eprtr:FacilityReport .
+                        ?facilityReport eprtr:nationalID ?nationalID . 
+                        ?facilityReport eprtr:forFacility ?facility . 
+                        ?facility eprtr:facilityID ?facilityID . 
+                        ?facility eprtr:inCountry <http://prtr.ec.europa.eu/rdf/country/", country, ">
+                      }", sep="")
+  d <- SPARQL(url=endpoint, query=queryString, format='csv', extra=list(format='text/csv'))
+  data = d$results
+  return(data)
+}
+
 #country is the two digit code - NL, DE, etc
 retrievePlantDataFromEUETS <- function(country){
   endpoint = "http://enipedia.tudelft.nl/sparql"
