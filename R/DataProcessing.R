@@ -37,6 +37,8 @@ extractCoordinates <- function(point){
   return(coords)
 }
 
+
+
 #convert text to the most boring form possible
 #this makes it easier to perform string comparisons
 normalizeText <- function(text){
@@ -44,6 +46,8 @@ normalizeText <- function(text){
   text = iconv(text, to="ASCII//TRANSLIT") #work with simple ascii - this doesn't do anything to help with misspellings
   text = trim(tolower(text)) #everyone to lower case to make further processing easier
   text = gsub('http://enipedia.tudelft.nl/wiki/', '', text)
+  # http://stackoverflow.com/questions/5356629/how-do-i-strip-the-null-byte-from-a-string-in-r
+  text = gsub("% ", " ", text) # without this, sometimes run into "embedded nul in string" errors
   text = gsub('\\)', '', text)
   text = gsub('\\(', '', text)
   text = gsub('/', ' ', text)
