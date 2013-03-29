@@ -16,12 +16,11 @@ getPrefixes <- function(){
 }
 
 retrievePlantDataFromGlobalEnergyObservatory <- function(country){
-  scraperURL = "https://api.scraperwiki.com/api/1.0/datastore/sqlite?format=csv&name=global_energy_observatory_power_plants&query=select+*+from+`swdata`&apikey="
+  scraperURL = "https://api.scraperwiki.com/api/1.0/datastore/sqlite?format=csv&name=global_energy_observatory_power_plants&query=select%20Name%2C%20Country%2C%20Latitude_Start%2C%20Longitude_Start%2C%20GEO_Assigned_Identification_Number%2C%20Fuel_type%2C%20Design_Capacity_MWe_nbr%2C%20State%2C%20Location%2C%20CurrentPage_sys%2C%20Operating_Company%2C%20Year_Project_Commissioned%2C%20References1%2C%20References2%20from%20%60swdata%60"
   file="GlobalEnergyObservatory.csv"
   if (file.exists(file) == FALSE) {
-    f = CFILE(file, mode="wb")
-    curlPerform(url = scraperURL, writedata = f@ref)
-    close(f)
+    #should work
+    download.file(scraperURL, file, method="curl")
   }
   geoData = read.csv(file, header=TRUE)
   locs = which(geoData$Country == country)
