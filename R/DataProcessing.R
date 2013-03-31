@@ -62,6 +62,7 @@ normalizeText <- function(text){
   text = gsub("\n", " ", text)
   text = gsub('"', " ", text)
   text = gsub("\\\\", " ", text)
+  # TODO Russian plants often have "aya" at the end of the name
   text = gsub("([a-z])centrale( |$)", "\\1 centrale\\2", text) #the Dutch add centrale as a suffix to power plant names
   text = sapply(text, URLdecode)
   text = removeStopWords(text) #remove terms that don't help us with matching
@@ -111,7 +112,7 @@ tokenize <- function(text){
   return(tokenList)
 }
 
-#TODO could just load these in from a file
+# TODO could just load these in from a file
 removeStopWords = function(text){
   stopwords = c("les", 
                 "sa", 
@@ -130,7 +131,7 @@ removeStopWords = function(text){
                 "el", 
                 "del", 
                 "the",
-		"inc", 
+		            "inc", 
                 "ltd", 
                 "power plant", 
                 "power station")
