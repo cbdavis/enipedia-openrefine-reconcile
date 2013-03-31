@@ -47,7 +47,7 @@ normalizeText <- function(text){
   text = trim(tolower(text)) #everyone to lower case to make further processing easier
   text = gsub('http://enipedia.tudelft.nl/wiki/', '', text)
   # http://stackoverflow.com/questions/5356629/how-do-i-strip-the-null-byte-from-a-string-in-r
-  text = gsub("% ", " ", text) # without this, sometimes run into "embedded nul in string" errors
+  text = gsub("%", " ", text) # without this, sometimes run into "embedded nul in string" errors
   text = gsub('\\)', '', text)
   text = gsub('\\(', '', text)
   text = gsub('/', ' ', text)
