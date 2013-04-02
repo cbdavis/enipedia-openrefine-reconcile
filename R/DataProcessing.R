@@ -47,7 +47,7 @@ normalizeText <- function(text){
   text = trim(tolower(text)) #everyone to lower case to make further processing easier
   text = gsub('http://enipedia.tudelft.nl/wiki/', '', text)
   # http://stackoverflow.com/questions/5356629/how-do-i-strip-the-null-byte-from-a-string-in-r
-  text = gsub("% ", " ", text) # without this, sometimes run into "embedded nul in string" errors
+  text = gsub("%", " ", text) # without this, sometimes run into "embedded nul in string" errors
   text = gsub('\\)', '', text)
   text = gsub('\\(', '', text)
   text = gsub('/', ' ', text)
@@ -62,6 +62,7 @@ normalizeText <- function(text){
   text = gsub("\n", " ", text)
   text = gsub('"', " ", text)
   text = gsub("\\\\", " ", text)
+  # TODO Russian plants often have "aya" at the end of the name
   text = gsub("([a-z])centrale( |$)", "\\1 centrale\\2", text) #the Dutch add centrale as a suffix to power plant names
   text = sapply(text, URLdecode)
   text = removeStopWords(text) #remove terms that don't help us with matching
@@ -111,7 +112,7 @@ tokenize <- function(text){
   return(tokenList)
 }
 
-#TODO could just load these in from a file
+# TODO could just load these in from a file
 removeStopWords = function(text){
   # TODO should create stop words for different languages and tie these to the different countries
   stopwords = c("les", 
@@ -129,8 +130,9 @@ removeStopWords = function(text){
                 "los", 
                 "las", 
                 "el", 
-                "del",
-                "inc", 
+                "del", 
+                "the",
+		            "inc", 
                 "ltd", 
                 "gmbh", 
                 "und", 
