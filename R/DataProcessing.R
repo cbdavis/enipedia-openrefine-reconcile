@@ -113,6 +113,7 @@ tokenize <- function(text){
 
 #TODO could just load these in from a file
 removeStopWords = function(text){
+  # TODO should create stop words for different languages and tie these to the different countries
   stopwords = c("les", 
                 "sa", 
                 "s a", 
@@ -120,10 +121,10 @@ removeStopWords = function(text){
                 "bv", 
                 "n v", 
                 "nv", 
-                "de", 
-                "des", 
-                "la", 
-                "le", 
+                "de", #spanish
+                "des", #spanish 
+                "la", #spanish
+                "le", #french
                 "du", 
                 "los", 
                 "las", 
@@ -131,6 +132,11 @@ removeStopWords = function(text){
                 "del",
                 "inc", 
                 "ltd", 
+                "gmbh", 
+                "und", 
+                "von", 
+                "der", 
+                "mit", 
                 "power plant", 
                 "power station")
   for (stopword in stopwords){
