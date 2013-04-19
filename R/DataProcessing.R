@@ -158,7 +158,6 @@ removeStopWords = function(text){
 #minTokenLength can be disabled by using values <= 0
 getUniqueTokens <- function(charVector, removeNumbers=TRUE, minTokenLength=3){
   allUniqueTokens = sort(unique(unlist(strsplit(paste(charVector, collapse=" "), split=" "))))
-  allUniqueTokens = normalizeText(allUniqueTokens)
   if (removeNumbers == TRUE){
     allUniqueTokens = allUniqueTokens[!aaply(allUniqueTokens, .margins=1, .fun=isInteger)]
   }
@@ -210,8 +209,8 @@ getTokenEntityMatrix <- function(allTokens, data){
   #TODO this can be parallelized
  
   #returns a list where each entry is a vector of tokens for that entity
-  uniqueTokensPerEntry = lapply(data, getUniqueTokens)
-  
+  uniqueTokensPerEntry = lapply(data, function(x){unique(sort(strsplit(x, " ")[[1]]))})
+    
   tokenIDSequence = c(1:length(uniqueTokensPerEntry))
   numTokensPerEntry = unlist(lapply(uniqueTokensPerEntry, length))
   
@@ -310,6 +309,10 @@ updateTokensEntityMatrixWithFuzzyStringMatch <- function(tokensMatrixData1, toke
 #The input consists of two vectors consisting of strings which can be further tokenized
 calculateSelfInformationOfIntersectingTokens <- function(data1, data2, useFuzzyTokenMatches=FALSE, equivalenceScore=0.9){
 
+  # normalize the data
+  data1 = normalizeText(data1)
+  data2 = normalizeText(data2)
+  
   allTokens = getUniqueTokens(c(data1, data2))
   
   rowNameLookup = c(1:length(allTokens))
