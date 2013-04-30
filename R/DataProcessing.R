@@ -38,35 +38,62 @@ extractCoordinates <- function(point){
 }
 
 
-
 #convert text to the most boring form possible
 #this makes it easier to perform string comparisons
+# This is based partially on the cleanup used for the 
+# fingerprint method of Google Refine - https://code.google.com/p/google-refine/wiki/ClusteringInDepth
 normalizeText <- function(text){
-  #TODO can have most of this be one giant regex search and replace
-  text = iconv(text, to="ASCII//TRANSLIT") #work with simple ascii - this doesn't do anything to help with misspellings
-  text = trim(tolower(text)) #everyone to lower case to make further processing easier
   text = gsub('http://enipedia.tudelft.nl/wiki/', '', text)
-  # http://stackoverflow.com/questions/5356629/how-do-i-strip-the-null-byte-from-a-string-in-r
-  text = gsub("%", " ", text) # without this, sometimes run into "embedded nul in string" errors
-  text = gsub('\\)', '', text)
-  text = gsub('\\(', '', text)
-  text = gsub('/', ' ', text)
-  text = gsub(',', ' ', text)
-  text = gsub('\\.', ' ', text)
-  text = gsub('&', '', text)
-  text = gsub('_', ' ', text)
-  text = gsub('-', ' ', text)
-  text = gsub(':', ' ', text)
-  text = gsub('  ', ' ', text)
-  text = gsub("'", " ", text)
-  text = gsub("\n", " ", text)
-  text = gsub('"', " ", text)
-  text = gsub("\\\\", " ", text)
+  # remove leading and trailing whitespace
+  text = gsub('^ +| +$', '', text)
+  # change all characters to their lowercase representation
+  text = tolower(text)
+  # remove all punctuation and control characters
+  text = gsub("[[:punct:]]|[[:cntrl:]]", " ", text)
+  # normalize extended western characters to their ASCII representation (for example "gödel" → "godel")
+  text = iconv(text, to="ASCII//TRANSLIT") #work with simple ascii - this doesn't do anything to help with misspellings
+  # get rid of consecutive spaces  
+  text = gsub('  +', ' ', text)
   # TODO Russian plants often have "aya" at the end of the name
   text = gsub("([a-z])centrale( |$)", "\\1 centrale\\2", text) #the Dutch add centrale as a suffix to power plant names
   text = sapply(text, URLdecode)
   text = removeStopWords(text) #remove terms that don't help us with matching
   names(text) = NULL #remove names - this is redundant and causes problems with RUnit tests
+  return(text)
+}
+
+# based on https://code.google.com/p/google-refine/wiki/ClusteringInDepth
+fingerprint <- function(text){
+  text = gsub('http://enipedia.tudelft.nl/wiki/', '', text)
+  # remove leading and trailing whitespace
+  text = gsub('^ +| +$', '', text)
+  # change all characters to their lowercase representation
+  text = tolower(text)
+  # remove all punctuation and control characters
+  text = gsub("[[:punct:]]|[[:cntrl:]]", " ", text)
+  # normalize extended western characters to their ASCII representation (for example "gödel" → "godel")
+  text = iconv(text, to="ASCII//TRANSLIT") #work with simple ascii - this doesn't do anything to help with misspellings
+  # get rid of consecutive spaces  
+  text = gsub('  +', ' ', text)
+  text = unlist(lapply(strsplit(text, " "), function(x){paste(unique(sort(x)), collapse=" ")}))
+  return(text)
+}
+
+# based on https://code.google.com/p/google-refine/wiki/ClusteringInDepth
+ngramFingerprint <- function(text, n=2){
+  text = gsub('http://enipedia.tudelft.nl/wiki/', '', text)
+  # change all characters to their lowercase representation
+  text = tolower(text)
+  # remove all punctuation, whitespace, and control characters
+  text = gsub("[[:punct:]]|[[:cntrl:]]|[[:space:]]", "", text)
+  # normalize extended western characters to their ASCII representation
+  text = iconv(text, to="ASCII//TRANSLIT") #work with simple ascii - this doesn't do anything to help with misspellings
+  # obtain all the string n-grams
+  text = unlist(lapply(text, function(x){ngrams = substring(x, c(1:(nchar(x)-(n-1))), c(n:(nchar(x))))
+                                         # sort the n-grams and remove duplicates
+                                         ngrams = unique(sort(ngrams))
+                                         # join the sorted n-grams back together
+                                         return(paste(ngrams, collapse="")) }))
   return(text)
 }
 
