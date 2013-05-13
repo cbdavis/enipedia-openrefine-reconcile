@@ -247,6 +247,11 @@ getTokenEntityMatrix <- function(allTokens, data){
   rowColumnIndices = cbind(rowNameLookup[unlist(uniqueTokensPerEntry)], rep(tokenIDSequence, numTokensPerEntry))
   # get rid of duplicated i j values for the matrix
   rowColumnIndices = rowColumnIndices[!duplicated(rowColumnIndices),]
+  # get rid of row names
+  row.names(rowColumnIndices) = NULL
+  # remove rows with NA
+  rowColumnIndices = rowColumnIndices[!is.na(rowColumnIndices[,1]),]
+  rowColumnIndices = rowColumnIndices[!is.na(rowColumnIndices[,2]),]
   tokensMatrixData[rowColumnIndices] = 1
   
   return(tokensMatrixData)
