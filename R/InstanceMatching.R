@@ -9,6 +9,7 @@ library(RecordLinkage) #string matching
 library(geosphere) #distance calculations
 library(Matrix) #sparse matrices
 library(RCurl) # download data from the internet - used for DataRetrieval.R
+library(sqldf) # sql queries over data frames - used to dramatically speed up calculations of self information 
 
 #This is the main function that processes reconciliation requests from Open Refine
 getMatches <- function(jsonString){
