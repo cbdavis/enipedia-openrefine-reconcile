@@ -338,6 +338,169 @@ updateTokensEntityMatrixWithFuzzyStringMatch <- function(tokensMatrixData1, toke
 }
 
 
+getTokenLocs = function(text){
+  # export all the tokens to a file
+  write.table(t(c("entityID", "token")), file="tokenLocs.txt", append=FALSE, col.names=FALSE, row.names=FALSE, sep="\t")
+  for (i in c(1:length(text))){
+    write.table(cbind(i, strsplit(text[i], " ")[[1]]), file="tokenLocs.txt", append=TRUE, col.names=FALSE, row.names=FALSE, sep="\t")
+  }
+  df = read.table("tokenLocs.txt", header=TRUE)
+  return(df)
+}
+
+
+calculateSelfInformationOfIntersectingTokens_sqldf <- function(data1, data2){
+  tokenLocs1 = getTokenLocs(data1$soup)
+  tokenLocs2 = getTokenLocs(data2$soup)
+  
+  #tokenLocs2$entityID = tokenLocs2$entityID + nrow(tokenLocs1) # increment the ids so that they are unique
+  
+  sqldf("create index token_tokenLocs1_Index on tokenLocs1(token)")
+  sqldf("create index token_tokenLocs2_Index on tokenLocs2(token)")
+  
+  allTokens = rbind(tokenLocs1, tokenLocs2)
+  sqldf("create index token_allTokens_Index on allTokens(token)")
+  sqldf("create index entityID_allTokens_Index on allTokens(entityID)")
+  
+  numEntities = nrow(allTokens)
+  
+  numTokens = length(unique(allTokens$token))
+  # ^2 since everything versus everything
+  # subtract numTokens since don't count a token matching with itself
+  numPermutationsOfTokens = ((numTokens^2) - numTokens)
+  
+  tokenFrequency = sqldf("select token, count(*) as tokenCount from allTokens group by token")
+  sqldf("create index token_tokenFrequency_Index on tokenFrequency(token)")
+  
+  tokenFrequency$selfInformation = -log10(tokenFrequency$tokenCount/numEntities)
+  tokenFrequency$probability = tokenFrequency$tokenCount / nrow(tokenFrequency)
+  
+  # now try to calculate the self information of intersecting tokens
+  resultsSummarized = sqldf("select tokenLocs1.entityID as entity1, 
+                            tokenLocs2.entityID as entity2, 
+                            sum(tokenFrequency.selfInformation) as totalSelfInfo, 
+                            count(*) as numIntersectingTokens FROM tokenLocs1 JOIN tokenLocs2 ON tokenLocs1.token == tokenLocs2.token 
+                            JOIN tokenFrequency ON tokenLocs1.token == tokenFrequency.token GROUP BY entity1, entity2")
+  
+  # calculate mutual information of terms
+  
+  # This is used to calculate Pxy
+  tokenCoOccurrenceTable = sqldf("select T1.token as token1, 
+                                 T2.token as token2, 
+                                 COUNT(*) as combinationCount 
+                                 FROM allTokens T1 
+                                 JOIN allTokens T2 
+                                 ON T1.entityID == T2.entityID 
+                                 WHERE T1.token != T2.token 
+                                 GROUP BY token1, token2")
+  
+  tokenCoOccurrenceTable$Pxy = tokenCoOccurrenceTable$combinationCount / numPermutationsOfTokens
+  
+  # calculating mutual information of intersecting tokens
+  mutualInformationOfIntersectingTokens = sqldf("select tokenCoOccurrenceTable.token1, 
+                                                tokenCoOccurrenceTable.token2, 
+                                                tokenCoOccurrenceTable.Pxy as Pxy, 
+                                                TF1.probability as Px, 
+                                                TF2.probability as Py, 
+                                                tokenCoOccurrenceTable.Pxy *log10(tokenCoOccurrenceTable.Pxy/(TF1.probability*TF2.probability)) as mutualInformation
+                                                FROM tokenCoOccurrenceTable 
+                                                JOIN tokenFrequency TF1 
+                                                ON tokenCoOccurrenceTable.token1 == TF1.token
+                                                JOIN tokenFrequency TF2 
+                                                ON tokenCoOccurrenceTable.token2 == TF2.token")
+  
+  # also calculate sum of mutual information of intersecting tokens for each combination of entities
+  intersectingTokensBetweenEntities = sqldf("select tokenLocs1.entityID as entity1, 
+                                            tokenLocs2.entityID as entity2, 
+                                            tokenLocs1.token as token  
+                                            FROM tokenLocs1 
+                                            JOIN tokenLocs2 
+                                            ON tokenLocs1.token == tokenLocs2.token 
+                                            ORDER BY entity1, entity2")
+  
+  # this takes forever!  not sure how much value it adds
+  # mutualInformationBetweenMatchingEntities = sqldf("select TokenTable1.entity1 as entity1, 
+  #                                                   TokenTable1.entity2 as entity2, 
+  #                                                   sum(mutualInformationOfIntersectingTokens.mutualInformation) as summedMutualInformation
+  #                                                   FROM intersectingTokensBetweenEntities TokenTable1
+  #                                                   JOIN intersectingTokensBetweenEntities TokenTable2 
+  #                                                   ON TokenTable1.entity1 ==  TokenTable2.entity1 
+  #                                                   AND TokenTable1.entity2 ==  TokenTable2.entity2 
+  #                                                   AND TokenTable1.token != TokenTable2.token 
+  #                                                   JOIN mutualInformationOfIntersectingTokens 
+  #                                                   ON mutualInformationOfIntersectingTokens.token1 == TokenTable1.token 
+  #                                                   AND mutualInformationOfIntersectingTokens.token2 == TokenTable2.token 
+  #                                                   GROUP BY entity1, entity2")
+  
+  
+  #mutualInformation = pxy *log(pxy/(px*py))
+  # which.max(mutualInformationBetweenMatchingEntities$summedMutualInformation)
+  # mutualInformationBetweenMatchingEntities[which.max(mutualInformationBetweenMatchingEntities$summedMutualInformation),]
+  # entity1 entity2 summedMutualInformation
+  # 1292      43   25364           -1.050503e-08
+  # data1$soup[43]
+  # "elverlingsen energie nordrhein sudwestfalen wasser werdohl westfalen"
+  # data2$soup[25364-nrow(tokenLocs1)]
+  # "236 aktiengesellschaft an bundesstrasse der e elverlingsen kraftwerk mark werdohl"
+  
+  # TODO try to find the self information of a partitioning - shows the uniqueness of terms in this partitioning/intersection of tokens
+  #sum(((1 - ((tokenFrequency.tokenCount - 2)/tokenFrequency.tokenCount)) * log10((1 - ((tokenFrequency.tokenCount - 2)/tokenFrequency.tokenCount))))) AS selfInfoPartitioning
+  selfInformationOfPartitioningPerMatchedEntities = sqldf("SELECT intersectingTokensBetweenEntities.entity1 AS entity1, 
+                                                          intersectingTokensBetweenEntities.entity2 AS entity2, 
+                                                          count(*) as numTokens, 
+                                                          -sum(((1.0 - ((cast(tokenFrequency.tokenCount as real) - 2.0)/tokenFrequency.tokenCount)) * log10((1.0 - ((cast(tokenFrequency.tokenCount as real) - 2.0)/cast(tokenFrequency.tokenCount as real)))))) AS selfInfoPartitioning
+                                                          FROM intersectingTokensBetweenEntities 
+                                                          JOIN tokenFrequency 
+                                                          ON tokenFrequency.token == intersectingTokensBetweenEntities.token 
+                                                          GROUP BY entity1, entity2 ORDER BY entity1, selfInfoPartitioning DESC")
+  
+  # there are two links between each combination of candiates
+  # entity1 -> entity2
+  # entity2 -> entity1
+  
+  
+  # TODO now get the highest matches for each entity1 - the query above is sorted
+  numTopMatches = 5
+  isDuplicated = duplicated(selfInformationOfPartitioningPerMatchedEntities$entity1)
+  #if not duplicated, then it's the highest value
+  locs = which(isDuplicated==FALSE)
+  #create sequences of length numTopMatches starting with the locations of the highest values (locs with FALSE for isDuplicated)
+  # This is then used to return the top numTopMatches rows for each value of entity1
+  keepTheseRows = unique(sort(unlist(lapply(locs, function(x){c(x:(x+numTopMatches-1))}))))
+  selfInformationOfPartitioningPerMatchedEntities = selfInformationOfPartitioningPerMatchedEntities[keepTheseRows,]
+  
+  selfInformationOfPartitioningPerMatchedEntities = sqldf("SELECT * 
+                                                        FROM selfInformationOfPartitioningPerMatchedEntities 
+                                                        ORDER BY entity2, selfInfoPartitioning DESC")
+  
+  isDuplicated = duplicated(selfInformationOfPartitioningPerMatchedEntities$entity2)
+  #if not duplicated, then it's the highest value
+  locs = which(isDuplicated==FALSE)
+  #create sequences of length numTopMatches starting with the locations of the highest values (locs with FALSE for isDuplicated)
+  # This is then used to return the top numTopMatches rows for each value of entity1
+  keepTheseRows = unique(sort(unlist(lapply(locs, function(x){c(x:(x+numTopMatches-1))}))))
+  selfInformationOfPartitioningPerMatchedEntities = selfInformationOfPartitioningPerMatchedEntities[keepTheseRows,]
+  
+  matchCountPerEntity = sqldf("SELECT entity1, 
+                            COUNT(*) AS matchCount 
+                            FROM selfInformationOfPartitioningPerMatchedEntities 
+                            GROUP BY entity1 ORDER BY matchCount DESC")
+  
+  
+  row.names(selfInformationOfPartitioningPerMatchedEntities) = NULL
+  
+  # track down the entries, figure out which tokens they have in common, then dump the data out in a spreadsheet
+  # also find the mutual best matches
+  
+  # remove NA rows
+  selfInformationOfPartitioningPerMatchedEntities = selfInformationOfPartitioningPerMatchedEntities[complete.cases(selfInformationOfPartitioningPerMatchedEntities),]
+  
+  # for every entry in data2, show the top 5 matches
+  selfInformationOfPartitioningPerMatchedEntities = sqldf("select * from selfInformationOfPartitioningPerMatchedEntities order by entity2, selfInfoPartitioning DESC")
+
+  return(selfInformationOfPartitioningPerMatchedEntities)
+}
+
 #soup vectors must be present in both data1 and data2 - matching will be done on these
 #The input consists of two vectors consisting of strings which can be further tokenized
 calculateSelfInformationOfIntersectingTokens <- function(data1, data2, useFuzzyTokenMatches=FALSE, equivalenceScore=0.9){
