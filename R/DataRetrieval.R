@@ -115,6 +115,30 @@ retrievePlantDataFromEUETS <- function(country){
   return(data)
 }
 
+retrievePlantDataFromEUETS_NEW <- function(country){
+  endpoint = "http://localhost:3030/ds/query"
+  queryString = paste(getPrefixes(), "select * where {
+                                      ?account euets:installation ?installation . 
+                                      ?account euets:AccountHolder ?account_holder .
+                                      ?account euets:identifierInReg ?identifierInReg . 
+                                      ?installation euets:name ?name . 
+                                      ?installation euets:installationIdentifier ?installationIdentifier . 
+                                      OPTIONAL{ ?installation euets:latitude ?lat } . 
+                                      OPTIONAL{ ?installation euets:longitude ?long } . 
+                                      OPTIONAL{ ?installation euets:address1 ?address1 } . 
+                                      OPTIONAL{ ?installation euets:address2 ?address2 } . 
+                                      OPTIONAL{ ?installation euets:city ?city } .
+                                      OPTIONAL{ ?installation euets:zipCode ?zip } .  
+                                      ?installation euets:countryCode ?countryCode . 
+                                      FILTER(?countryCode = \"", country, "\") . 
+                                      ?installation euets:permitIdentifier ?permitIdentifier .
+                                      }", sep="")
+  d <- SPARQL(url=endpoint, query=queryString, format='csv', extra=list(format='text/csv'))
+  data = d$results
+  return(data)
+}
+
+
 retrieveCompanyDataFromEnipedia <- function(){
   enipediaData = NULL
   endpoint = "http://enipedia.tudelft.nl/sparql"

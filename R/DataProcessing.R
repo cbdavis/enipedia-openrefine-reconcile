@@ -8,7 +8,8 @@ isInteger <- function(N){
 }
 
 extractCoordinates <- function(point){
-  coords = colsplit(point, split=",", names=c("lat", "lon"))
+  coords = as.data.frame(matrix(unlist(strsplit(point, split=",")), ncol=2, byrow=TRUE))
+  colnames(coords) = c("lat", "lon")
   
   #make sure that this is a character vector, not a factor vector
   coords$lon = as.character(coords$lon)
@@ -246,6 +247,11 @@ getTokenEntityMatrix <- function(allTokens, data){
   rowColumnIndices = cbind(rowNameLookup[unlist(uniqueTokensPerEntry)], rep(tokenIDSequence, numTokensPerEntry))
   # get rid of duplicated i j values for the matrix
   rowColumnIndices = rowColumnIndices[!duplicated(rowColumnIndices),]
+  # get rid of row names
+  row.names(rowColumnIndices) = NULL
+  # remove rows with NA
+  rowColumnIndices = rowColumnIndices[!is.na(rowColumnIndices[,1]),]
+  rowColumnIndices = rowColumnIndices[!is.na(rowColumnIndices[,2]),]
   tokensMatrixData[rowColumnIndices] = 1
   
   return(tokensMatrixData)
