@@ -15,6 +15,30 @@ getPrefixes <- function(){
          ")
 }
 
+retrievePlantDataFromEUETS_NEW <- function(country){
+  endpoint = "http://localhost:3030/ds/query"
+  queryString = paste(getPrefixes(), "select * where {
+                      ?account euets:installation ?installation .
+                      ?account euets:AccountHolder ?account_holder .
+                      ?account euets:identifierInReg ?identifierInReg .
+                      ?installation euets:name ?name .
+                      ?installation euets:installationIdentifier ?installationIdentifier .
+                      OPTIONAL{ ?installation euets:latitude ?lat } .
+                      OPTIONAL{ ?installation euets:longitude ?long } .
+                      OPTIONAL{ ?installation euets:address1 ?address1 } .
+                      OPTIONAL{ ?installation euets:address2 ?address2 } .
+                      OPTIONAL{ ?installation euets:city ?city } .
+                      OPTIONAL{ ?installation euets:zipCode ?zip } .
+                      ?installation euets:countryCode ?countryCode .
+                      FILTER(?countryCode = \"", country, "\") .
+                                      ?installation euets:permitIdentifier ?permitIdentifier .
+                                      }", sep="")
+  d <- SPARQL(url=endpoint, query=queryString, format='csv', extra=list(format='text/csv'))
+  data = d$results
+  return(data)
+}
+
+
 retrievePlantDataFromGlobalEnergyObservatory <- function(country){
   scraperURL = "https://api.scraperwiki.com/api/1.0/datastore/sqlite?format=csv&name=global_energy_observatory_power_plants&query=select%20Name%2C%20Country%2C%20Latitude_Start%2C%20Longitude_Start%2C%20GEO_Assigned_Identification_Number%2C%20Fuel_type%2C%20Design_Capacity_MWe_nbr%2C%20State%2C%20Location%2C%20CurrentPage_sys%2C%20Operating_Company%2C%20Year_Project_Commissioned%2C%20References1%2C%20References2%20from%20%60swdata%60"
   file="GlobalEnergyObservatory.csv"
