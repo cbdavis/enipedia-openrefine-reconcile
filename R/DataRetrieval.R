@@ -176,6 +176,7 @@ retrieveCountryDataFromEnipedia <- function (country) {
       
       #generate cleaned versions of the names that are more suited for matching
       enipediaData$CleanedPlantName = normalizeText(gsub(' Powerplant', '', enipediaData$name))
+      enipediaData$CleanedCityName = normalizeText(enipediaData$city)
       enipediaData$CleanedOwnerName = normalizeText(enipediaData$owner)
       enipediaData$CleanedStateName = normalizeText(enipediaData$state)
       
