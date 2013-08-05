@@ -1,7 +1,5 @@
 ########## Data Processing ##########
 
-library(sqldf)
-
 # These functions are used for processing data into more usable forms.
 
 #http://stackoverflow.com/questions/3476782/how-to-check-if-the-number-is-integer

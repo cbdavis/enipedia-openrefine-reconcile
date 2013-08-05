@@ -1,7 +1,5 @@
 options(stringsAsFactors = FALSE)
 
-library(sqldf)
-
 getTokenLocs = function(text){
   # export all the tokens to a file
   write.table(t(c("entityID", "token")), file="tokenLocs.txt", append=FALSE, col.names=FALSE, row.names=FALSE, sep="\t")
@@ -33,18 +31,19 @@ findMutualBestMatches = function(selfInformationOfPartitioningPerMatchedEntities
   }))
 }
 
-calculateSelfInformationOfPartitioning = function(data1, data2, numTopMatches = 5){
-  if (class(data1) == "character"){
-    data1 = data.frame(soup=data1)
+calculateSelfInformationOfPartitioning = function(soup1, soup2, numTopMatches = 5){
+  if (class(soup1) == "character"){
+    soup1 = data.frame(soup=soup1)
   }
-  if (class(data2) == "character"){
-    data2 = data.frame(soup=data2)
+  if (class(soup2) == "character"){
+    soup2 = data.frame(soup=soup2)
   }
   
-  tokenLocs1 = getTokenLocs(data1$soup)
-  tokenLocs2 = getTokenLocs(data2$soup)
+  tokenLocs1 = getTokenLocs(soup1$soup)
+  tokenLocs2 = getTokenLocs(soup2$soup)
   
-  #tokenLocs2$entityID = tokenLocs2$entityID + nrow(tokenLocs1) # increment the ids so that they are unique
+  # This was commented out previously - why?
+  tokenLocs2$entityID = tokenLocs2$entityID + nrow(tokenLocs1) # increment the ids so that they are unique
   
   sqldf("create index token_tokenLocs1_Index on tokenLocs1(token)")
   sqldf("create index token_tokenLocs2_Index on tokenLocs2(token)")
@@ -53,6 +52,7 @@ calculateSelfInformationOfPartitioning = function(data1, data2, numTopMatches = 
   sqldf("create index token_allTokens_Index on allTokens(token)")
   sqldf("create index entityID_allTokens_Index on allTokens(entityID)")
   
+  # there are the data entities, so all the entries from data set 1 and data set 2
   numEntities = nrow(allTokens)
   
   numTokens = length(unique(allTokens$token))
@@ -117,7 +117,7 @@ calculateSelfInformationOfPartitioning = function(data1, data2, numTopMatches = 
                                                           FROM intersectingTokensBetweenEntities 
                                                           JOIN tokenFrequency 
                                                           ON tokenFrequency.token == intersectingTokensBetweenEntities.token 
-                                                          GROUP BY entity1, entity2 ORDER BY entity1, selfInfoPartitioning DESC")
+                                                          GROUP BY entity1, entity2 ORDER BY entity1, selfInfoPartitioning DESC, numTokens DESC")
   
   # there are two links between each combination of candiates
   # entity1 -> entity2
@@ -132,9 +132,11 @@ calculateSelfInformationOfPartitioning = function(data1, data2, numTopMatches = 
   keepTheseRows = unique(sort(unlist(lapply(locs, function(x){c(x:(x+numTopMatches-1))}))))
   selfInformationOfPartitioningPerMatchedEntities = selfInformationOfPartitioningPerMatchedEntities[keepTheseRows,]
   
+  # sort also by numTokens so in case there is a tie with the selfInfoPartitioning, the entries
+  # with the most number of tokens in common will come out on top
   selfInformationOfPartitioningPerMatchedEntities = sqldf("SELECT * 
                                                         FROM selfInformationOfPartitioningPerMatchedEntities 
-                                                        ORDER BY entity2, selfInfoPartitioning DESC")
+                                                        ORDER BY entity1, selfInfoPartitioning DESC, numTokens DESC")
   
   isDuplicated = duplicated(selfInformationOfPartitioningPerMatchedEntities$entity2)
   #if not duplicated, then it's the highest value
@@ -159,7 +161,9 @@ calculateSelfInformationOfPartitioning = function(data1, data2, numTopMatches = 
   selfInformationOfPartitioningPerMatchedEntities = selfInformationOfPartitioningPerMatchedEntities[complete.cases(selfInformationOfPartitioningPerMatchedEntities),]
   
   # for every entry in data2, show the top 5 matches
-  selfInformationOfPartitioningPerMatchedEntities = sqldf("select * from selfInformationOfPartitioningPerMatchedEntities order by entity2, selfInfoPartitioning DESC")
+  selfInformationOfPartitioningPerMatchedEntities = sqldf("select * from selfInformationOfPartitioningPerMatchedEntities order by entity1, selfInfoPartitioning DESC, numTokens DESC")
   
+  # reset the identifiers for the entities (data entries) in data set 2
+  selfInformationOfPartitioningPerMatchedEntities$entity2 = selfInformationOfPartitioningPerMatchedEntities$entity2 - nrow(tokenLocs1)
   return(selfInformationOfPartitioningPerMatchedEntities)
 }
