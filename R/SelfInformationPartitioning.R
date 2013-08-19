@@ -42,8 +42,10 @@ calculateSelfInformationOfPartitioning = function(soup1, soup2, numTopMatches = 
   tokenLocs1 = getTokenLocs(soup1$soup)
   tokenLocs2 = getTokenLocs(soup2$soup)
   
-  # This was commented out previously - why?
-  tokenLocs2$entityID = tokenLocs2$entityID + nrow(tokenLocs1) # increment the ids so that they are unique
+  # increment the ids so that they are unique
+  # this is needed due to the allTokens data frame
+  # which keeps track of the tokens found in each entry
+  tokenLocs2$entityID = tokenLocs2$entityID + nrow(tokenLocs1) 
   
   sqldf("create index token_tokenLocs1_Index on tokenLocs1(token)")
   sqldf("create index token_tokenLocs2_Index on tokenLocs2(token)")
@@ -137,15 +139,7 @@ calculateSelfInformationOfPartitioning = function(soup1, soup2, numTopMatches = 
   selfInformationOfPartitioningPerMatchedEntities = sqldf("SELECT * 
                                                         FROM selfInformationOfPartitioningPerMatchedEntities 
                                                         ORDER BY entity1, selfInfoPartitioning DESC, numTokens DESC")
-  
-  isDuplicated = duplicated(selfInformationOfPartitioningPerMatchedEntities$entity2)
-  #if not duplicated, then it's the highest value
-  locs = which(isDuplicated==FALSE)
-  #create sequences of length numTopMatches starting with the locations of the highest values (locs with FALSE for isDuplicated)
-  # This is then used to return the top numTopMatches rows for each value of entity1
-  keepTheseRows = unique(sort(unlist(lapply(locs, function(x){c(x:(x+numTopMatches-1))}))))
-  selfInformationOfPartitioningPerMatchedEntities = selfInformationOfPartitioningPerMatchedEntities[keepTheseRows,]
-  
+    
   matchCountPerEntity = sqldf("SELECT entity1, 
                             COUNT(*) AS matchCount 
                             FROM selfInformationOfPartitioningPerMatchedEntities 
@@ -159,8 +153,7 @@ calculateSelfInformationOfPartitioning = function(soup1, soup2, numTopMatches = 
   
   # remove NA rows
   selfInformationOfPartitioningPerMatchedEntities = selfInformationOfPartitioningPerMatchedEntities[complete.cases(selfInformationOfPartitioningPerMatchedEntities),]
-  
-  # for every entry in data2, show the top 5 matches
+  # sort first by score, then by number of tokens (in case of tie)
   selfInformationOfPartitioningPerMatchedEntities = sqldf("select * from selfInformationOfPartitioningPerMatchedEntities order by entity1, selfInfoPartitioning DESC, numTokens DESC")
   
   # reset the identifiers for the entities (data entries) in data set 2
