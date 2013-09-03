@@ -165,6 +165,10 @@ retrieveCountryDataFromEnipedia <- function (country) {
                         OPTIONAL{?x prop:EU_ETS_ID ?euetsID } . 
                         OPTIONAL{?x prop:State ?state } .
                         OPTIONAL{?x prop:Ownercompany ?owner }. 
+                        OPTIONAL{?x prop:OpenStreetMap_link ?osmLink } . 
+                        OPTIONAL{?x prop:Wikimapia_link ?wikimapiaLink } . 
+                        OPTIONAL{?x prop:Wikipedia_page ?wikipedia } . 
+                        OPTIONAL{?x prop:Global_Energy_Observatory_ID ?geoID } .
                         ?x prop:Point ?point . 
                         }", sep="")
     d <- SPARQL(url=endpoint, query=queryString, format='csv', extra=list(format='text/csv'))
