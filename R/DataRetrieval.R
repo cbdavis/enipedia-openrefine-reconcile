@@ -155,13 +155,14 @@ retrieveCompanyDataFromEnipedia <- function(){
 retrieveCountryDataFromEnipedia <- function (country) {
   enipediaData = NULL
   if (country != ""){
+    # fix encoding 
     endpoint = "http://enipedia.tudelft.nl/sparql"
     queryString = paste(getPrefixes(), 
                         "select * where {
                         ?x rdf:type cat:Powerplant .
                         OPTIONAL{?x prop:City ?city} .
                         ?x rdfs:label ?name . 
-                        ?x prop:Country a:", gsub(" ", "_", country) ," . 
+                        ?x prop:Country <http://enipedia.tudelft.nl/wiki/", gsub(" ", "_", country) ,"> . 
                         OPTIONAL{?x prop:EU_ETS_ID ?euetsID } . 
                         OPTIONAL{?x prop:State ?state } .
                         OPTIONAL{?x prop:Ownercompany ?owner }. 
@@ -173,6 +174,26 @@ retrieveCountryDataFromEnipedia <- function (country) {
                         }", sep="")
     d <- SPARQL(url=endpoint, query=queryString, format='csv', extra=list(format='text/csv'))
     enipediaData = d$results
+    
+    if (ncol(enipediaData) == 1) {
+      # query probably timed out, need to split up the queries using LIMIT and OFFSET      
+      enipediaData = data.frame()
+      keepLooking=TRUE
+      offset = 0
+      limit = 100
+      while(keepLooking==TRUE){
+        print(offset)
+        queryStringWithOffset = paste(queryString, " OFFSET ", offset, " LIMIT ", limit, sep="")
+        d <- SPARQL(url=endpoint, query=queryStringWithOffset, format='csv', extra=list(format='text/csv'))
+        if (nrow(d$results) > 0 && ncol(d$results) > 1){ # check that the data doesn't look bogus
+          enipediaData = rbind(enipediaData, d$results)
+        } else {
+          keepLooking = FALSE
+        }
+        offset = offset + limit
+      }
+    }
+    
     if (dim(enipediaData)[1] > 0){
       coords = extractCoordinates(enipediaData$point)
       enipediaData$lat = coords$lat
