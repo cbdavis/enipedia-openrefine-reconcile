@@ -81,6 +81,15 @@ retrievePlantDataFromGlobalEnergyObservatory <- function(country){
   return(geoData)
 }
 
+"select distinct ?facilityID ?nationalID where {
+                        ?facilityReport rdf:type eprtr:FacilityReport .
+                        ?facilityReport eprtr:nationalID ?nationalID . 
+                        ?facilityReport eprtr:forFacility ?facility . 
+                        ?facility eprtr:facilityID ?facilityID . 
+                        ?facility eprtr:inCountry <http://prtr.ec.europa.eu/rdf/country/", country, ">
+                      }", sep="")
+
+
 #country is the two digit code - NL, DE, etc
 retrievePlantDataFromEPRTR <- function(country){
   endpoint = "http://enipedia.tudelft.nl/sparql"
@@ -97,6 +106,8 @@ retrievePlantDataFromEPRTR <- function(country){
                         OPTIONAL{ ?x eprtr:postalCode ?postalCode } . 
                         OPTIONAL{ ?x eprtr:latestReport ?latestReport . 
                         ?latestReport eprtr:parentCompanyName ?parentCompanyName . }
+                        OPTIONAL{ ?x eprtr:latestReport ?latestReport . 
+                        ?latestReport eprtr:nationalID ?nationalID . }
                       }", sep="")
   d <- SPARQL(url=endpoint, query=queryString, format='csv', extra=list(format='text/csv'))
   data = d$results
