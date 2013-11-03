@@ -16,7 +16,7 @@ findMutualBestMatches = function(selfInformationOfPartitioningPerMatchedEntities
   
   selfInfoMatrix = sparseMatrix(i=max(entity1), j=max(entity2), x=0)
   rowColumnIndices = cbind(entity1, entity2)
-  selfInfoMatrix[rowColumnIndices] = selfInformationOfPartitioningPerMatchedEntities$selfInfoPartitioning
+  selfInfoMatrix[rowColumnIndices] = selfInformationOfPartitioningPerMatchedEntities$totalSelfInfo
   mutualBestCandidatesLocs = returnMutualBestCandidates(selfInfoMatrix)
   # take a subset of candidatesInfo
   

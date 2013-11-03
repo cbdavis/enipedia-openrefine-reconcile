@@ -64,7 +64,7 @@ normalizeText <- function(text){
 }
 
 # based on https://code.google.com/p/google-refine/wiki/ClusteringInDepth
-fingerprint <- function(text){
+fingerprint <- function(text, minTokenLength=3){
   text = gsub('http://enipedia.tudelft.nl/wiki/', '', text)
   # remove leading and trailing whitespace
   text = gsub('^ +| +$', '', text)
@@ -77,6 +77,8 @@ fingerprint <- function(text){
   # get rid of consecutive spaces  
   text = gsub('  +', ' ', text)
   text = unlist(lapply(strsplit(text, " "), function(x){paste(unique(sort(x)), collapse=" ")}))
+  text = unlist(lapply(strsplit(text, " "), function(x){locs = which(nchar(x) >= minTokenLength)
+                                                        paste(unique(sort(x[locs])), collapse=" ")}))
   return(text)
 }
 
