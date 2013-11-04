@@ -4,7 +4,10 @@ getTokenLocs = function(text){
   # export all the tokens to a file
   write.table(t(c("entityID", "token")), file="tokenLocs.txt", append=FALSE, col.names=FALSE, row.names=FALSE, sep="\t")
   for (i in c(1:length(text))){
-    write.table(cbind(i, strsplit(text[i], " ")[[1]]), file="tokenLocs.txt", append=TRUE, col.names=FALSE, row.names=FALSE, sep="\t")
+    token = strsplit(text[i], " ")[[1]]
+    if (length(token) > 0){
+      write.table(cbind(i, token), file="tokenLocs.txt", append=TRUE, col.names=FALSE, row.names=FALSE, sep="\t")
+    }
   }
   df = read.table("tokenLocs.txt", header=TRUE)
   return(df)
