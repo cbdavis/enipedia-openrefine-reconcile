@@ -1,5 +1,8 @@
 enipedia-openrefine-reconcile
 ==================================
+
+**Note: current development efforts are focused on https://github.com/cbdavis/enipedia-search**
+
 This contains R code used to set up a OpenRefine reconciliation service for the data on enipedia.tudelft.nl.  It also contains numerous functions which have been developed to help with the process of entity matching between data sets.  The code is being refactored to make the functions more modular so that it is easy to be able to test out different entity matching strategies and evaluate how well they work compared to other methods.  
 
 The code is organized as a package to make it easier to work with.
